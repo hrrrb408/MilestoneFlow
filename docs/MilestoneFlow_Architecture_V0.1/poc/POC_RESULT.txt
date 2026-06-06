@@ -1,0 +1,12 @@
+test_concurrent_duplicate_requests_create_one_business_effect (__main__.IdempotencyPoc.test_concurrent_duplicate_requests_create_one_business_effect) ... ok
+test_draft_can_be_edited (__main__.ImmutableVersionPoc.test_draft_can_be_edited) ... ok
+test_published_version_cannot_be_overwritten_or_deleted (__main__.ImmutableVersionPoc.test_published_version_cannot_be_overwritten_or_deleted) ... ok
+test_email_failure_does_not_rollback_business_publication (__main__.OutboxPoc.test_email_failure_does_not_rollback_business_publication) ... ok
+test_only_hash_is_persisted_and_link_is_single_object (__main__.PublicLinkTokenPoc.test_only_hash_is_persisted_and_link_is_single_object) ... ok
+test_cross_workspace_child_reference_is_rejected (__main__.TenantIsolationPoc.test_cross_workspace_child_reference_is_rejected) ... ok
+test_scoped_query_does_not_return_other_workspace (__main__.TenantIsolationPoc.test_scoped_query_does_not_return_other_workspace) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.063s
+
+OK

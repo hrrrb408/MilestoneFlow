@@ -1,0 +1,12 @@
+# MANIFEST
+
+| 文件 | 大小（bytes） | SHA-256 |
+|---|---:|---|
+| `01_领域模型设计.md` | 14735 | `475bfd4367d88787562753d8afcec2b2ef30f00ce911420c1ef96c5fdb58dd1d` |
+| `02_ER图.md` | 9353 | `4f652f193d13a8e4ceb34eab641361f8d991a082cf026fb14056ab52474a2526` |
+| `03_数据库表结构.md` | 17900 | `0c19527ef1c06a52bb9803ed065fdb0ee3495a5aaab5c5aa311757ecd089408c` |
+| `04_数据字典.md` | 9755 | `f2c9766de3c962eae740f7f9fd2c5803a5aa50585c3633e912a80cfc427c149a` |
+| `05_状态机与枚举说明.md` | 8297 | `c7df3023fdb32844770e18c3ee1f9766331ef07fdd36355386b870ad6c83bc1f` |
+| `06_索引和约束设计.md` | 9100 | `cd7dca2fd35f133a83910e2aac281045bfe02895eb6d1ff724b53fa8c44f30a7` |
+| `07_数据迁移规范.md` | 7539 | `7e3303c4536d60f0ff6f188d0a533a87489107a97e1d4da1c05ecba5f26e7c35` |
+| `README.md` | 1479 | `3608ca3b221cf3fc041d8112ed6fe52e2d3b305eab0f89c415c1a8668e518124` |
