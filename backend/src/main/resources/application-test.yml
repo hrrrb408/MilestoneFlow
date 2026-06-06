@@ -1,0 +1,33 @@
+# Test profile — used by integration tests with Testcontainers
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:17:///milestoneflow_test
+    username: test
+    password: test
+    hikari:
+      maximum-pool-size: 3
+      driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  flyway:
+    enabled: true
+
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: WARN
+    com.milestoneflow: DEBUG
+    org.flywaydb: INFO
+    org.hibernate: WARN

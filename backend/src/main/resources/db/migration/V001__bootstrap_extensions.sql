@@ -1,0 +1,5 @@
+-- V001__bootstrap_extensions.sql
+-- Bootstrap migration: establishes the Flyway migration history baseline.
+-- No business tables are created in the B0 engineering baseline.
+-- Future migrations will add business tables following the naming convention:
+--   V002__create_workspace.sql, V003__create_project.sql, etc.
