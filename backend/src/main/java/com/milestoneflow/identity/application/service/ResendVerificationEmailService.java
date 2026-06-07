@@ -32,6 +32,9 @@ import java.util.UUID;
  * email exists, the account is ACTIVE, DISABLED, or PENDING_VERIFICATION.
  * Only PENDING_VERIFICATION users actually receive a new token.
  *
+ * <p>Per B1 Baseline §8.2: "Previous token remains valid until expiry or used.
+ * Multiple valid tokens allowed." Old tokens are NOT deleted on resend.
+ *
  * <p>Rate limit hook deferred to MF-BE-011.
  */
 @Service
@@ -90,10 +93,9 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
             return;
         }
 
-        // Delete old unused EMAIL_VERIFICATION tokens for this user
-        tokenRepository.deleteUnusedByUserIdAndPurpose(user.getId(), VerificationTokenPurpose.EMAIL_VERIFICATION);
-
-        // Generate new token
+        // Per B1 Baseline §8.2: "Previous token remains valid until expiry or used.
+        // Multiple valid tokens allowed." — do NOT delete old tokens.
+        // Generate new token alongside existing ones.
         SecretToken secretToken = tokenGenerator.generate();
         String tokenHash = tokenHasher.hash(secretToken.value());
 

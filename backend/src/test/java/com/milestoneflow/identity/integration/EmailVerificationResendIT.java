@@ -72,7 +72,7 @@ class EmailVerificationResendIT extends AbstractIntegrationTest {
     class Resend {
 
         @Test
-        @DisplayName("PENDING user gets new token after resend")
+        @DisplayName("PENDING user gets new token after resend (old token kept per B1 §8.2)")
         void pendingUserGetsNewToken() {
             UUID userId = createPendingUser("resend" + uniqueSuffix + "@test.com");
 
@@ -83,28 +83,28 @@ class EmailVerificationResendIT extends AbstractIntegrationTest {
 
             // Resend
             ResponseEntity<Map> response = resendVerification("resend" + uniqueSuffix + "@test.com");
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-            // Should still have 1 token (old deleted, new created)
+            // Per B1 Baseline §8.2: multiple valid tokens allowed.
+            // Should have 2 tokens (old kept + new created)
             List<VerificationToken> after = verificationTokenRepository.findByUserIdAndPurpose(
                     userId, VerificationTokenPurpose.EMAIL_VERIFICATION);
-            assertThat(after).hasSize(1);
-            assertThat(after.get(0).getId()).isNotEqualTo(before.get(0).getId());
+            assertThat(after).hasSize(2);
         }
 
         @Test
-        @DisplayName("old unused EMAIL_VERIFICATION tokens are invalidated")
-        void oldTokensInvalidated() {
+        @DisplayName("old EMAIL_VERIFICATION tokens remain valid after resend (B1 §8.2)")
+        void oldTokensRemainValid() {
             UUID userId = createPendingUser("old" + uniqueSuffix + "@test.com");
             UUID oldTokenId = verificationTokenRepository.findByUserIdAndPurpose(
                     userId, VerificationTokenPurpose.EMAIL_VERIFICATION).get(0).getId();
 
             resendVerification("old" + uniqueSuffix + "@test.com");
 
-            // Old token should be deleted
+            // Old token should still exist (not deleted)
             List<VerificationToken> tokens = verificationTokenRepository.findByUserIdAndPurpose(
                     userId, VerificationTokenPurpose.EMAIL_VERIFICATION);
-            assertThat(tokens.stream().noneMatch(t -> t.getId().equals(oldTokenId))).isTrue();
+            assertThat(tokens.stream().anyMatch(t -> t.getId().equals(oldTokenId))).isTrue();
         }
 
         @Test
@@ -127,14 +127,14 @@ class EmailVerificationResendIT extends AbstractIntegrationTest {
         }
 
         @Test
-        @DisplayName("unknown email returns same 202")
+        @DisplayName("unknown email returns same 200")
         void unknownEmail() {
             ResponseEntity<Map> response = resendVerification("nonexistent" + uniqueSuffix + "@test.com");
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
 
         @Test
-        @DisplayName("ACTIVE user returns same 202")
+        @DisplayName("ACTIVE user returns same 200")
         void activeUser() {
             UUID userId = createPendingUser("active" + uniqueSuffix + "@test.com");
             AppUser user = appUserRepository.findById(userId).orElseThrow();
@@ -142,11 +142,11 @@ class EmailVerificationResendIT extends AbstractIntegrationTest {
             appUserRepository.save(user);
 
             ResponseEntity<Map> response = resendVerification("active" + uniqueSuffix + "@test.com");
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
 
         @Test
-        @DisplayName("DISABLED user returns same 202")
+        @DisplayName("DISABLED user returns same 200")
         void disabledUser() {
             UUID userId = createPendingUser("dis" + uniqueSuffix + "@test.com");
             AppUser user = appUserRepository.findById(userId).orElseThrow();
@@ -154,7 +154,7 @@ class EmailVerificationResendIT extends AbstractIntegrationTest {
             appUserRepository.save(user);
 
             ResponseEntity<Map> response = resendVerification("dis" + uniqueSuffix + "@test.com");
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
 
         @Test
@@ -164,11 +164,11 @@ class EmailVerificationResendIT extends AbstractIntegrationTest {
 
             resendVerification("confirm" + uniqueSuffix + "@test.com");
 
-            // New token should exist and be usable
+            // Old + new token = 2 tokens total, all unused
             List<VerificationToken> tokens = verificationTokenRepository.findByUserIdAndPurpose(
                     userId, VerificationTokenPurpose.EMAIL_VERIFICATION);
-            assertThat(tokens).hasSize(1);
-            assertThat(tokens.get(0).getUsedAt()).isNull();
+            assertThat(tokens).hasSize(2);
+            assertThat(tokens).allMatch(t -> t.getUsedAt() == null);
         }
     }
 
@@ -182,7 +182,7 @@ class EmailVerificationResendIT extends AbstractIntegrationTest {
 
         VerificationToken token = VerificationToken.create(
                 idGenerator.nextId(), userId, VerificationTokenPurpose.EMAIL_VERIFICATION,
-                "token-hash-" + UUID.randomUUID() + "pad-to-64-characters-long-string-padding!!",
+                tokenHasher.hash("test-token-" + UUID.randomUUID()),
                 Instant.now(clock).plus(properties.tokenTtl()));
         verificationTokenRepository.save(token);
 

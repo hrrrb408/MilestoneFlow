@@ -8,6 +8,7 @@ import com.milestoneflow.identity.application.port.out.VerificationTokenReposito
 import com.milestoneflow.identity.application.result.EmailVerificationResult;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.VerificationTokenInvalidException;
+import com.milestoneflow.identity.domain.exception.VerificationTokenInvalidException.Type;
 import com.milestoneflow.identity.domain.model.AppUser;
 import com.milestoneflow.identity.domain.model.VerificationToken;
 import com.milestoneflow.identity.domain.type.UserStatus;
@@ -75,7 +76,7 @@ public class ConfirmEmailVerificationService implements ConfirmEmailVerification
             throw new VerificationTokenInvalidException("token_already_used");
         }
         if (token.isExpired(now)) {
-            throw new VerificationTokenInvalidException("token_expired");
+            throw new VerificationTokenInvalidException(Type.EXPIRED, "token_expired");
         }
 
         // 4. Load associated user

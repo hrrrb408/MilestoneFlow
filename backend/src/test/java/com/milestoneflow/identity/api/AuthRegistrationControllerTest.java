@@ -192,7 +192,7 @@ class AuthRegistrationControllerTest {
     class Resend {
 
         @Test
-        @DisplayName("returns 202 for known email")
+        @DisplayName("returns 200 for known email")
         void knownEmail() throws Exception {
             doNothing().when(resendVerificationEmailUseCase).resend(any(ResendVerificationEmailCommand.class));
 
@@ -202,12 +202,12 @@ class AuthRegistrationControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .header("X-Request-Id", UUID.randomUUID().toString())
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isAccepted())
+                    .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").exists());
         }
 
         @Test
-        @DisplayName("returns 202 for unknown email (anti-enumeration)")
+        @DisplayName("returns 200 for unknown email (anti-enumeration)")
         void unknownEmail() throws Exception {
             doNothing().when(resendVerificationEmailUseCase).resend(any(ResendVerificationEmailCommand.class));
 
@@ -217,7 +217,7 @@ class AuthRegistrationControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .header("X-Request-Id", UUID.randomUUID().toString())
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isAccepted());
+                    .andExpect(status().isOk());
         }
 
         @Test
@@ -268,7 +268,7 @@ class AuthRegistrationControllerTest {
         }
 
         @Test
-        @DisplayName("returns 422 for invalid token")
+        @DisplayName("returns 401 for invalid token")
         void invalidToken() throws Exception {
             when(confirmEmailVerificationUseCase.confirm(any(ConfirmEmailVerificationCommand.class)))
                     .thenThrow(new VerificationTokenInvalidException("token_not_found"));
@@ -279,8 +279,8 @@ class AuthRegistrationControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .header("X-Request-Id", UUID.randomUUID().toString())
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isUnprocessableEntity())
-                    .andExpect(jsonPath("$.code").value("AUTH_VERIFICATION_TOKEN_INVALID_OR_EXPIRED"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("AUTH_VERIFICATION_TOKEN_INVALID"))
                     .andExpect(jsonPath("$.message").isString());
         }
 
@@ -303,7 +303,7 @@ class AuthRegistrationControllerTest {
         }
 
         @Test
-        @DisplayName("returns 403 for disabled account")
+        @DisplayName("returns 401 for disabled account")
         void disabledAccount() throws Exception {
             when(confirmEmailVerificationUseCase.confirm(any(ConfirmEmailVerificationCommand.class)))
                     .thenThrow(new AccountDisabledException());
@@ -314,7 +314,7 @@ class AuthRegistrationControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .header("X-Request-Id", UUID.randomUUID().toString())
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("AUTH_ACCOUNT_DISABLED"));
         }
     }

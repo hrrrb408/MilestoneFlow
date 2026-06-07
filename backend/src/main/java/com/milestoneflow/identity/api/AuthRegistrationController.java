@@ -93,8 +93,7 @@ public class AuthRegistrationController {
 
         resendVerificationEmailUseCase.resend(command);
 
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(ApiResponse.of(
+        return ResponseEntity.ok(ApiResponse.of(
                         "If the account is eligible, a verification email will be sent.",
                         resolveRequestId()));
     }

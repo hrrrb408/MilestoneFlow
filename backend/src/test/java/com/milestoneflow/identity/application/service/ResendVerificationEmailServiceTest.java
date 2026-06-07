@@ -26,7 +26,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -105,10 +104,9 @@ class ResendVerificationEmailServiceTest {
         }
 
         @Test
-        @DisplayName("PENDING user deletes old unused EMAIL_VERIFICATION tokens")
-        void deletesOldTokens() {
+        @DisplayName("PENDING user creates new token without deleting old ones (B1 Baseline §8.2)")
+        void doesNotDeleteOldTokens() {
             AppUser pendingUser = createTestUser(UserStatus.PENDING_VERIFICATION);
-            UUID userId = pendingUser.getId();
             when(userRepository.findByEmailNormalized("user@example.com")).thenReturn(Optional.of(pendingUser));
             when(idGenerator.nextId()).thenReturn(UUID.randomUUID());
             when(tokenGenerator.generate()).thenReturn(new SecretToken("new-token"));
@@ -117,26 +115,9 @@ class ResendVerificationEmailServiceTest {
 
             service.resend(new ResendVerificationEmailCommand("user@example.com"));
 
-            verify(tokenRepository).deleteUnusedByUserIdAndPurpose(userId, VerificationTokenPurpose.EMAIL_VERIFICATION);
-        }
-
-        @Test
-        @DisplayName("only deletes EMAIL_VERIFICATION tokens, not PASSWORD_RESET")
-        void onlyDeletesEmailVerification() {
-            AppUser pendingUser = createTestUser(UserStatus.PENDING_VERIFICATION);
-            when(userRepository.findByEmailNormalized("user@example.com")).thenReturn(Optional.of(pendingUser));
-            when(idGenerator.nextId()).thenReturn(UUID.randomUUID());
-            when(tokenGenerator.generate()).thenReturn(new SecretToken("t"));
-            when(tokenHasher.hash(any())).thenReturn("h");
-            when(tokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-            service.resend(new ResendVerificationEmailCommand("user@example.com"));
-
-            verify(tokenRepository).deleteUnusedByUserIdAndPurpose(
-                    pendingUser.getId(), VerificationTokenPurpose.EMAIL_VERIFICATION);
-            // Never called with PASSWORD_RESET
-            verify(tokenRepository, never()).deleteUnusedByUserIdAndPurpose(
-                    any(), eq(VerificationTokenPurpose.PASSWORD_RESET));
+            // Per B1 Baseline §8.2: "Previous token remains valid until expiry or used.
+            // Multiple valid tokens allowed." — do NOT delete old tokens.
+            verify(tokenRepository, never()).deleteUnusedByUserIdAndPurpose(any(), any());
         }
 
         @Test

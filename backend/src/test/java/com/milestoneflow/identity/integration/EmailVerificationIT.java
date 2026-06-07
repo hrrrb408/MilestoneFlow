@@ -120,7 +120,7 @@ class EmailVerificationIT extends AbstractIntegrationTest {
 
             // Second use fails
             ResponseEntity<Map> response = confirmToken(rawToken);
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
 
         @Test
@@ -137,7 +137,7 @@ class EmailVerificationIT extends AbstractIntegrationTest {
 
             VerificationToken token = VerificationToken.create(
                     idGenerator.nextId(), userId, VerificationTokenPurpose.EMAIL_VERIFICATION,
-                    tokenHash, Instant.parse("2020-01-01T00:00:00Z")); // expired
+                    tokenHash, Instant.now(clock).minusSeconds(1)); // expired 1s ago
             verificationTokenRepository.save(token);
 
             ResponseEntity<Map> response = confirmToken(rawToken);
@@ -148,7 +148,7 @@ class EmailVerificationIT extends AbstractIntegrationTest {
         @DisplayName("rejects non-existent token")
         void rejectsNonExistentToken() {
             ResponseEntity<Map> response = confirmToken("nonexistent-token-value");
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
 
         @Test
@@ -170,7 +170,7 @@ class EmailVerificationIT extends AbstractIntegrationTest {
             verificationTokenRepository.save(token);
 
             ResponseEntity<Map> response = confirmToken(rawToken);
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
