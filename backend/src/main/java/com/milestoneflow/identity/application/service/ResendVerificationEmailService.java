@@ -1,0 +1,122 @@
+package com.milestoneflow.identity.application.service;
+
+import com.milestoneflow.identity.application.command.ResendVerificationEmailCommand;
+import com.milestoneflow.identity.application.event.EmailVerificationRequestedEvent;
+import com.milestoneflow.identity.application.port.in.ResendVerificationEmailUseCase;
+import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
+import com.milestoneflow.identity.application.port.out.TokenHasher;
+import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.domain.model.AppUser;
+import com.milestoneflow.identity.domain.model.VerificationToken;
+import com.milestoneflow.identity.domain.policy.EmailNormalizationResult;
+import com.milestoneflow.identity.domain.type.UserStatus;
+import com.milestoneflow.identity.domain.type.VerificationTokenPurpose;
+import com.milestoneflow.identity.infrastructure.config.EmailVerificationProperties;
+import com.milestoneflow.shared.id.IdGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.util.Locale;
+import java.util.UUID;
+
+/**
+ * Application service for resending verification emails.
+ *
+ * <p>Anti-enumeration: always returns successfully regardless of whether the
+ * email exists, the account is ACTIVE, DISABLED, or PENDING_VERIFICATION.
+ * Only PENDING_VERIFICATION users actually receive a new token.
+ *
+ * <p>Rate limit hook deferred to MF-BE-011.
+ */
+@Service
+public class ResendVerificationEmailService implements ResendVerificationEmailUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(ResendVerificationEmailService.class);
+
+    private final AppUserRepository userRepository;
+    private final VerificationTokenRepository tokenRepository;
+    private final SecureTokenGenerator tokenGenerator;
+    private final TokenHasher tokenHasher;
+    private final IdGenerator idGenerator;
+    private final Clock clock;
+    private final EmailVerificationProperties properties;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public ResendVerificationEmailService(AppUserRepository userRepository,
+                                          VerificationTokenRepository tokenRepository,
+                                          SecureTokenGenerator tokenGenerator,
+                                          TokenHasher tokenHasher,
+                                          IdGenerator idGenerator,
+                                          Clock clock,
+                                          EmailVerificationProperties properties,
+                                          ApplicationEventPublisher eventPublisher) {
+        this.userRepository = userRepository;
+        this.tokenRepository = tokenRepository;
+        this.tokenGenerator = tokenGenerator;
+        this.tokenHasher = tokenHasher;
+        this.idGenerator = idGenerator;
+        this.clock = clock;
+        this.properties = properties;
+        this.eventPublisher = eventPublisher;
+    }
+
+    @Override
+    @Transactional
+    public void resend(ResendVerificationEmailCommand command) {
+        // Normalize the email for lookup
+        EmailNormalizationResult emailResult = EmailNormalizationResult.normalize(command.getEmail());
+
+        // Find user by normalized email
+        var userOpt = userRepository.findByEmailNormalized(emailResult.normalizedEmail());
+
+        if (userOpt.isEmpty()) {
+            // Unknown email — return silently (anti-enumeration)
+            log.debug("Resend requested for unknown email");
+            return;
+        }
+
+        AppUser user = userOpt.get();
+
+        // Only process PENDING_VERIFICATION users
+        if (user.getStatus() != UserStatus.PENDING_VERIFICATION) {
+            // ACTIVE or DISABLED — return silently (anti-enumeration)
+            log.debug("Resend skipped for user userId={} status={}", user.getId(), user.getStatus());
+            return;
+        }
+
+        // Delete old unused EMAIL_VERIFICATION tokens for this user
+        tokenRepository.deleteUnusedByUserIdAndPurpose(user.getId(), VerificationTokenPurpose.EMAIL_VERIFICATION);
+
+        // Generate new token
+        SecretToken secretToken = tokenGenerator.generate();
+        String tokenHash = tokenHasher.hash(secretToken.value());
+
+        Instant now = Instant.now(clock);
+        Instant expiresAt = now.plus(properties.tokenTtl());
+
+        VerificationToken newToken = VerificationToken.create(
+                idGenerator.nextId(),
+                user.getId(),
+                VerificationTokenPurpose.EMAIL_VERIFICATION,
+                tokenHash,
+                expiresAt
+        );
+
+        tokenRepository.save(newToken);
+
+        // Publish event for AFTER_COMMIT email delivery
+        eventPublisher.publishEvent(new EmailVerificationRequestedEvent(
+                user.getId(),
+                user.getEmail(),
+                user.getDisplayName(),
+                secretToken.value(),
+                Locale.forLanguageTag(user.getLocale())
+        ));
+    }
+}
