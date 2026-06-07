@@ -26,6 +26,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.milestoneflow.identity.infrastructure.config.IdentityConfiguration;
+import com.milestoneflow.identity.infrastructure.security.AuthCookieWriter;
+import com.milestoneflow.identity.infrastructure.security.AuthenticationEntryPointImpl;
+import com.milestoneflow.identity.infrastructure.security.SecurityConfiguration;
 import com.milestoneflow.shared.time.TimeConfiguration;
 
 import java.util.UUID;
@@ -37,8 +41,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AuthRegistrationController.class)
-@Import(TimeConfiguration.class)
+@WebMvcTest({AuthRegistrationController.class, IdentityExceptionHandler.class})
+@Import({SecurityConfiguration.class, AuthCookieWriter.class, AuthenticationEntryPointImpl.class, IdentityConfiguration.class, TimeConfiguration.class})
 @DisplayName("AuthRegistrationController")
 class AuthRegistrationControllerTest {
 
@@ -56,6 +60,16 @@ class AuthRegistrationControllerTest {
 
     @MockitoBean
     private ConfirmEmailVerificationUseCase confirmEmailVerificationUseCase;
+
+    // Spring Security beans required by SecurityConfiguration
+    @MockitoBean
+    private com.milestoneflow.identity.application.port.out.AuthSessionRepository authSessionRepository;
+
+    @MockitoBean
+    private com.milestoneflow.identity.application.port.out.AppUserRepository appUserRepository;
+
+    @MockitoBean
+    private com.milestoneflow.identity.application.port.out.TokenHasher tokenHasher;
 
     @Nested
     @DisplayName("POST /auth/register")
