@@ -310,7 +310,7 @@ class AppUserRepositoryIT extends AbstractIntegrationTest {
 
             VerificationToken token = VerificationToken.create(UUID.randomUUID(), user.getId(),
                     VerificationTokenPurpose.EMAIL_VERIFICATION, "c".repeat(64),
-                    FIXED_INSTANT.plusSeconds(3600));
+                    Instant.parse("2027-06-02T12:00:00Z"));
             verificationTokenRepository.save(token);
 
             assertThat(appUserRepository.findById(user.getId())).isPresent();

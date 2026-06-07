@@ -9,9 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,13 +21,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Integration test verifying optimistic locking on {@link AppUser}.
  *
- * <p>Uses two independent {@link EntityManager} instances to simulate
- * concurrent transactions competing for the same row.
+ * <p>Uses JPA for the initial save, then JDBC to simulate a concurrent
+ * update that bypasses JPA's version check, and finally verifies that
+ * JPA detects the stale version and throws
+ * {@link ObjectOptimisticLockingFailureException}.
  */
+@Transactional
 class IdentityOptimisticLockIT extends AbstractIntegrationTest {
 
     @Autowired
     private AppUserRepository appUserRepository;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -39,37 +46,33 @@ class IdentityOptimisticLockIT extends AbstractIntegrationTest {
         AppUser user = AppUser.create(UUID.randomUUID(), "lock-" + uniqueSuffix + "@example.test",
                 "lock-" + uniqueSuffix + "@example.test", "Lock User", "a".repeat(60), "zh-TW");
         appUserRepository.save(user);
+        entityManager.flush();
+        entityManager.clear();
         userId = user.getId();
     }
 
     @Test
     @DisplayName("should throw OptimisticLockException on concurrent update")
     void shouldDetectConcurrentUpdate() {
-        // Transaction 1: load and modify
-        AppUser user1 = appUserRepository.findById(userId).orElseThrow();
-        user1.activateAfterEmailVerification(Instant.parse("2027-06-01T12:00:00Z"));
+        // Load user via JPA (managed entity, version=0)
+        AppUser loaded = appUserRepository.findById(userId).orElseThrow();
+        assertThat(loaded.getVersion()).isEqualTo(0);
 
-        // Transaction 2: load same user via direct EM (bypasses repository cache)
-        entityManager.clear(); // detach all managed entities
-        AppUser user2 = entityManager.find(AppUser.class, userId);
-        assertThat(user2).isNotNull();
-        user2.changePasswordHash("b".repeat(60));
-        entityManager.persist(user2);
-        entityManager.flush();
-        long versionAfterTx2 = user2.getVersion();
+        // Simulate concurrent update via raw JDBC (bypasses JPA version check)
+        jdbc.update("UPDATE app_user SET version = 1, password_hash = ? WHERE id = ?",
+                "b".repeat(60), userId);
 
-        // Transaction 1: now try to flush — should fail
+        // Modify the stale JPA entity and try to flush
+        loaded.changePasswordHash("c".repeat(60));
         assertThatThrownBy(() -> {
-            entityManager.persist(user1);
+            appUserRepository.save(loaded);
             entityManager.flush();
         }).isInstanceOf(ObjectOptimisticLockingFailureException.class);
 
-        // Verify: only transaction 2's change persisted
+        // Verify: the JDBC update's change persisted, JPA's did not
         entityManager.clear();
-        AppUser finalState = entityManager.find(AppUser.class, userId);
-        assertThat(finalState).isNotNull();
+        AppUser finalState = appUserRepository.findById(userId).orElseThrow();
         assertThat(finalState.getPasswordHash()).isEqualTo("b".repeat(60));
-        assertThat(finalState.getEmailVerifiedAt()).isNull(); // tx1 change lost
-        assertThat(finalState.getVersion()).isEqualTo(versionAfterTx2);
+        assertThat(finalState.getVersion()).isEqualTo(1);
     }
 }
