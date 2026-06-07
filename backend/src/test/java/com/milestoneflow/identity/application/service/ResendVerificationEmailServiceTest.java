@@ -6,9 +6,7 @@ import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
-import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
 import com.milestoneflow.identity.domain.model.AppUser;
-import com.milestoneflow.identity.domain.model.VerificationToken;
 import com.milestoneflow.identity.domain.type.UserStatus;
 import com.milestoneflow.identity.domain.type.VerificationTokenPurpose;
 import com.milestoneflow.identity.infrastructure.config.EmailVerificationProperties;
@@ -28,6 +26,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -172,7 +171,7 @@ class ResendVerificationEmailServiceTest {
             service.resend(new ResendVerificationEmailCommand("user@example.com"));
 
             verify(tokenRepository).save(argThat(token ->
-                    token.toString().doesNotContain("secret-raw-token")
+                    !token.toString().contains("secret-raw-token")
             ));
         }
 

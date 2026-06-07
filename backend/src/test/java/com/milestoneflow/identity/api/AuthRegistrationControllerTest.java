@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.bean.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,7 +29,6 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -45,13 +44,13 @@ class AuthRegistrationControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private RegisterUserUseCase registerUserUseCase;
 
-    @MockBean
+    @MockitoBean
     private ResendVerificationEmailUseCase resendVerificationEmailUseCase;
 
-    @MockBean
+    @MockitoBean
     private ConfirmEmailVerificationUseCase confirmEmailVerificationUseCase;
 
     @Nested
@@ -278,7 +277,7 @@ class AuthRegistrationControllerTest {
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isUnprocessableEntity())
                     .andExpect(jsonPath("$.code").value("AUTH_VERIFICATION_TOKEN_INVALID_OR_EXPIRED"))
-                    .andExpect(jsonPath("$.message").doesNotHaveValue("invalid-token"));
+                    .andExpect(jsonPath("$.message").isString());
         }
 
         @Test

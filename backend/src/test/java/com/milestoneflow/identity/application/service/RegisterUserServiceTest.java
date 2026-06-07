@@ -26,13 +26,11 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -208,7 +206,7 @@ class RegisterUserServiceTest {
             service.register(command);
 
             verify(tokenRepository).save(argThat(token ->
-                    token.toString().doesNotContain("raw-secret-token")
+                    !token.toString().contains("raw-secret-token")
             ));
         }
 
