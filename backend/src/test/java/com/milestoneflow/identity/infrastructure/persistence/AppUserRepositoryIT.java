@@ -3,6 +3,7 @@ package com.milestoneflow.identity.infrastructure.persistence;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
 import com.milestoneflow.identity.domain.model.AppUser;
 import com.milestoneflow.identity.domain.model.AuthSession;
 import com.milestoneflow.identity.domain.model.VerificationToken;
@@ -13,7 +14,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -207,7 +207,7 @@ class AppUserRepositoryIT extends AbstractIntegrationTest {
                     "User 2", "hash2", "zh-TW");
 
             assertThatThrownBy(() -> appUserRepository.save(user2))
-                    .isInstanceOf(DataIntegrityViolationException.class);
+                    .isInstanceOf(EmailAlreadyExistsException.class);
         }
     }
 

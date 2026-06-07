@@ -19,7 +19,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
@@ -223,7 +222,7 @@ class RegisterUserServiceTest {
         }
 
         @Test
-        @DisplayName("throws EmailAlreadyExistsException on DataIntegrityViolation for uk_app_user_email_normalized")
+        @DisplayName("throws EmailAlreadyExistsException when adapter converts constraint violation")
         void concurrentDuplicateEmail() {
             when(idGenerator.nextId()).thenReturn(UUID.randomUUID(), UUID.randomUUID());
             when(userRepository.existsByEmailNormalized(any())).thenReturn(false);
@@ -231,9 +230,8 @@ class RegisterUserServiceTest {
             when(tokenGenerator.generate()).thenReturn(new SecretToken("t"));
             when(tokenHasher.hash(any())).thenReturn("h");
 
-            DataIntegrityViolationException dive = new DataIntegrityViolationException(
-                    "violates unique constraint \"uk_app_user_email_normalized\"");
-            when(userRepository.save(any())).thenThrow(dive);
+            // The adapter now converts DataIntegrityViolationException to EmailAlreadyExistsException
+            when(userRepository.save(any())).thenThrow(new EmailAlreadyExistsException());
 
             assertThatThrownBy(() -> service.register(command))
                     .isInstanceOf(EmailAlreadyExistsException.class);

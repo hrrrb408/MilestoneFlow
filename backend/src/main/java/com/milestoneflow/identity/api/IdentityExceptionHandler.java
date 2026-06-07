@@ -112,20 +112,20 @@ public class IdentityExceptionHandler extends GlobalExceptionHandler {
     }
 
     /**
-     * Handles database unique constraint violations for concurrent registration.
+     * Safety-net handler for database unique constraint violations that escape
+     * the repository adapter (e.g., JPA deferred flush at commit time).
      *
-     * <p>JPA defers INSERT execution to flush/commit time, so the
-     * {@code DataIntegrityViolationException} may escape the service's try-catch.
-     * This handler catches it at the controller advice level and maps
-     * {@code uk_app_user_email_normalized} violations to 409.
+     * <p>Walks the exception cause chain looking for Hibernate's
+     * {@code ConstraintViolationException} and checks its constraint name.
+     * Only {@code uk_app_user_email_normalized} is mapped to 409;
+     * all other data integrity errors are re-thrown for the global 500 handler.
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(
             DataIntegrityViolationException ex,
             HttpServletRequest request
     ) {
-        String message = ex.getMessage();
-        if (message != null && message.contains("uk_app_user_email_normalized")) {
+        if (isEmailUniqueConstraintViolation(ex)) {
             return build(
                     HttpStatus.CONFLICT,
                     "AUTH_EMAIL_ALREADY_EXISTS",
@@ -136,5 +136,35 @@ public class IdentityExceptionHandler extends GlobalExceptionHandler {
         // Other data integrity violations are not ours to handle.
         // Re-throw to let the global fallback return 500.
         throw ex;
+    }
+
+    private static final String EMAIL_CONSTRAINT = "uk_app_user_email_normalized";
+
+    /**
+     * Walks the cause chain looking for Hibernate's ConstraintViolationException
+     * and checks if the constraint name matches the email unique constraint.
+     * Uses class-name matching to avoid a compile-time dependency on
+     * Hibernate from the API layer (required by ArchUnit rules).
+     */
+    private static boolean isEmailUniqueConstraintViolation(Throwable ex) {
+        Throwable current = ex;
+        int depth = 0;
+        while (current != null && depth < 20) {
+            if (current.getClass().getName()
+                    .equals("org.hibernate.exception.ConstraintViolationException")) {
+                try {
+                    var method = current.getClass().getMethod("getConstraintName");
+                    String constraintName = (String) method.invoke(current);
+                    if (EMAIL_CONSTRAINT.equals(constraintName)) {
+                        return true;
+                    }
+                } catch (Exception ignored) {
+                    // Reflection failed — not the expected Hibernate type
+                }
+            }
+            current = current.getCause();
+            depth++;
+        }
+        return false;
     }
 }

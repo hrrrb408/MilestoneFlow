@@ -19,7 +19,6 @@ import com.milestoneflow.shared.id.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -125,17 +124,10 @@ public class RegisterUserService implements RegisterUserUseCase {
         );
 
         // 8. Save both in transaction
-        try {
-            userRepository.save(user);
-            tokenRepository.save(verificationToken);
-        } catch (DataIntegrityViolationException e) {
-            // Handle concurrent duplicate email registration
-            String message = e.getMessage();
-            if (message != null && message.contains("uk_app_user_email_normalized")) {
-                throw new EmailAlreadyExistsException();
-            }
-            throw e;
-        }
+        // Constraint violation for uk_app_user_email_normalized is handled
+        // by AppUserRepositoryAdapter at the infrastructure boundary.
+        userRepository.save(user);
+        tokenRepository.save(verificationToken);
 
         log.info("Registration completed userId={}", userId);
 
