@@ -57,3 +57,14 @@ milestoneflow:
   auth:
     email-verification:
       token-ttl: PT24H
+    access-token-ttl: PT15M
+    refresh-token-ttl: P30D
+    cookies:
+      access-name: MF_ACCESS
+      refresh-name: MF_REFRESH
+      xsrf-name: XSRF-TOKEN
+      access-path: /api/v1
+      refresh-path: /api/v1/auth/refresh
+      same-site-access: Lax
+      same-site-refresh: Strict
+      secure: false

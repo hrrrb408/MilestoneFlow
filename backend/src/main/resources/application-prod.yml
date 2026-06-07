@@ -34,3 +34,8 @@ logging:
     root: WARN
     com.milestoneflow: INFO
     org.flywaydb: INFO
+
+milestoneflow:
+  auth:
+    cookies:
+      secure: true
