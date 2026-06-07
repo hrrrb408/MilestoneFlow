@@ -17,7 +17,10 @@ class ApiErrorResponseTest {
 
     @Test
     void shouldBuildMinimalError() {
+        OffsetDateTime fixedTimestamp = OffsetDateTime.of(2026, 6, 7, 10, 0, 0, 0, ZoneOffset.UTC);
+
         ApiErrorResponse error = ApiErrorResponse.builder()
+                .timestamp(fixedTimestamp)
                 .status(500)
                 .code("INTERNAL_ERROR")
                 .message("Something went wrong")
@@ -32,17 +35,19 @@ class ApiErrorResponseTest {
         assertThat(error.path()).isEqualTo("/api/v1/test");
         assertThat(error.fieldErrors()).isEmpty();
         assertThat(error.details()).isEmpty();
-        assertThat(error.timestamp()).isNotNull();
+        assertThat(error.timestamp()).isEqualTo(fixedTimestamp);
     }
 
     @Test
     void shouldBuildErrorWithFieldErrors() {
+        OffsetDateTime fixedTimestamp = OffsetDateTime.of(2026, 6, 7, 10, 1, 0, 0, ZoneOffset.UTC);
         var fieldErrors = List.of(
                 new ApiErrorDetail("name", "NotBlank", "must not be blank"),
                 new ApiErrorDetail("email", "Email", "must be a valid email")
         );
 
         ApiErrorResponse error = ApiErrorResponse.builder()
+                .timestamp(fixedTimestamp)
                 .status(422)
                 .code("VALIDATION_FAILED")
                 .message("Validation failed")
@@ -58,7 +63,10 @@ class ApiErrorResponseTest {
 
     @Test
     void shouldBuildErrorWithDetails() {
+        OffsetDateTime fixedTimestamp = OffsetDateTime.of(2026, 6, 7, 10, 2, 0, 0, ZoneOffset.UTC);
+
         ApiErrorResponse error = ApiErrorResponse.builder()
+                .timestamp(fixedTimestamp)
                 .status(409)
                 .code("PROJECT_ARCHIVED")
                 .message("Project is archived")
@@ -96,7 +104,10 @@ class ApiErrorResponseTest {
 
     @Test
     void shouldOmitEmptyFieldErrorsAndDetails() throws Exception {
+        OffsetDateTime fixedTimestamp = OffsetDateTime.of(2026, 6, 7, 10, 4, 0, 0, ZoneOffset.UTC);
+
         ApiErrorResponse error = ApiErrorResponse.builder()
+                .timestamp(fixedTimestamp)
                 .status(500)
                 .code("INTERNAL_ERROR")
                 .message("Error")
@@ -112,7 +123,10 @@ class ApiErrorResponseTest {
 
     @Test
     void shouldHandleNullFieldErrorsGracefully() {
+        OffsetDateTime fixedTimestamp = OffsetDateTime.of(2026, 6, 7, 10, 5, 0, 0, ZoneOffset.UTC);
+
         ApiErrorResponse error = ApiErrorResponse.builder()
+                .timestamp(fixedTimestamp)
                 .status(400)
                 .code("INVALID_REQUEST")
                 .message("Bad request")

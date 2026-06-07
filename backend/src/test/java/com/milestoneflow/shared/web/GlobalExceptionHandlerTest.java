@@ -16,6 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Clock;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +43,11 @@ class GlobalExceptionHandlerTest {
         @Bean
         TestController testController() {
             return new TestController();
+        }
+
+        @Bean
+        Clock clock() {
+            return Clock.systemUTC();
         }
     }
 

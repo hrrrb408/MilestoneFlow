@@ -83,6 +83,42 @@ Rationale: Client-side generation avoids the round-trip issue where JPA needs to
 
 ## Items for Architecture Window Confirmation
 
-- [ ] Confirm UUID v7 is acceptable (vs UUID v4 or ULID).
-- [ ] Confirm whether the timestamp leakage in UUID v7 is a security concern.
-- [ ] Confirm the UUID v7 library to use (e.g. `java-uuid-generator` or custom implementation).
+- [x] Confirm UUID v7 is acceptable (vs UUID v4 or ULID). — **Accepted.**
+- [x] Confirm whether the timestamp leakage in UUID v7 is a security concern. — **Acceptable.** Timestamp leakage is not a concern for primary keys. Public links use separate high-entropy tokens.
+- [x] Confirm the UUID v7 library to use (e.g. `java-uuid-generator` or custom implementation). — **`com.fasterxml.uuid:java-uuid-generator:5.2.0`** selected.
+
+## Implementation Record
+
+### Library Selection
+
+| Attribute | Value |
+|-----------|-------|
+| Library | `com.fasterxml.uuid:java-uuid-generator` |
+| Version | 5.2.0 |
+| License | Apache 2.0 |
+| Maven coordinates | `com.fasterxml.uuid:java-uuid-generator:5.2.0` |
+| Java 21 compatible | Yes |
+| RFC 9562 UUID v7 | Yes |
+| Maintainer | Toshiaki Maki (cowtowncoder) — Jackson/fasterxml ecosystem |
+| Transitive dependencies | None |
+
+### Adapter Isolation
+
+- Interface: `com.milestoneflow.shared.id.IdGenerator` — no Spring or library dependency.
+- Implementation: `com.milestoneflow.shared.id.UuidV7IdGenerator` — `@Component`, uses `Generators.timeBasedEpochGenerator()`.
+- Third-party types (`TimeBasedEpochGenerator`) only appear inside the adapter.
+- Business code depends on `IdGenerator` interface only.
+
+### Replacement Cost
+
+Low. Replace `UuidV7IdGenerator` with a new adapter implementing `IdGenerator`. No other code changes required.
+
+### Known Limitations
+
+- UUID v7 timestamp reveals creation millisecond. Not used as business time.
+- Monotonic ordering is per-generator within the same millisecond. Not guaranteed across JVM instances.
+- `created_at` (JPA auditing via Clock bean) is the authoritative business timestamp.
+
+### Implementation Status
+
+Implemented in MF-BE-004. OPEN-Q-001 resolved.

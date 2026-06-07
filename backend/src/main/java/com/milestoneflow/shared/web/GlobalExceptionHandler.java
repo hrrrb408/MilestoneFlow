@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -26,6 +28,12 @@ import java.util.List;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final Clock clock;
+
+    public GlobalExceptionHandler(Clock clock) {
+        this.clock = clock;
+    }
 
     /**
      * Handles {@code @Valid} body validation failures.
@@ -158,6 +166,7 @@ public class GlobalExceptionHandler {
             List<ApiErrorDetail> fieldErrors
     ) {
         ApiErrorResponse body = ApiErrorResponse.builder()
+                .timestamp(OffsetDateTime.now(clock))
                 .status(status.value())
                 .code(code)
                 .message(message)

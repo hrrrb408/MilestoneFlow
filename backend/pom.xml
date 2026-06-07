@@ -26,6 +26,7 @@
 
         <!-- Dependency versions (managed by Spring Boot BOM unless overridden) -->
         <testcontainers.version>1.21.3</testcontainers.version>
+        <java-uuid-generator.version>5.2.0</java-uuid-generator.version>
     </properties>
 
     <dependencies>
@@ -45,6 +46,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- ID Generation -->
+        <dependency>
+            <groupId>com.fasterxml.uuid</groupId>
+            <artifactId>java-uuid-generator</artifactId>
+            <version>${java-uuid-generator.version}</version>
         </dependency>
 
         <!-- Database -->

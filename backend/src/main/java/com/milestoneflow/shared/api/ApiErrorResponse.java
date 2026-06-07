@@ -31,7 +31,7 @@ public record ApiErrorResponse(
     }
 
     public static final class Builder {
-        private OffsetDateTime timestamp = OffsetDateTime.now();
+        private OffsetDateTime timestamp;
         private int status;
         private String code;
         private String message;
