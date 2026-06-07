@@ -31,7 +31,13 @@ CREATE TABLE workspace (
         CHECK (jsonb_typeof(settings) = 'object'),
     CONSTRAINT ck_workspace_version CHECK (version >= 0),
     CONSTRAINT ck_workspace_archived
-        CHECK ((status = 'ARCHIVED' AND archived_at IS NOT NULL) OR (status <> 'ARCHIVED'))
+        CHECK ((status = 'ARCHIVED' AND archived_at IS NOT NULL) OR (status <> 'ARCHIVED')),
+    CONSTRAINT fk_workspace_created_by
+        FOREIGN KEY (created_by) REFERENCES app_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_workspace_updated_by
+        FOREIGN KEY (updated_by) REFERENCES app_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_workspace_archived_by
+        FOREIGN KEY (archived_by) REFERENCES app_user(id) ON DELETE RESTRICT
 );
 
 -- ── workspace_membership ──────────────────────────────────────────────────
