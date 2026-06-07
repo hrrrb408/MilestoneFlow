@@ -39,7 +39,7 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
         UUID id = UUID.randomUUID();
         jdbc.update(
                 "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                 id, "Test Workspace", "test-ws-" + id.toString().substring(0, 8),
                 "TWD", "Asia/Taipei", "ACTIVE", "{}", createdBy
         );
@@ -77,13 +77,13 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
             String slug = "unique-slug-test";
             jdbc.update(
                     "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                     UUID.randomUUID(), "WS1", slug, "TWD", "Asia/Taipei", "ACTIVE", "{}", userId
             );
             assertThatThrownBy(() ->
                     jdbc.update(
                             "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                             UUID.randomUUID(), "WS2", slug, "USD", "UTC", "ACTIVE", "{}", userId
                     )
             ).isInstanceOf(DuplicateKeyException.class);
@@ -95,7 +95,7 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
             assertThatThrownBy(() ->
                     jdbc.update(
                             "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                             UUID.randomUUID(), "WS", "bad-curr", "tw", "Asia/Taipei", "ACTIVE", "{}", userId
                     )
             ).isInstanceOf(DataIntegrityViolationException.class);
@@ -107,7 +107,7 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
             assertThatThrownBy(() ->
                     jdbc.update(
                             "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                             UUID.randomUUID(), "WS", "bad-status", "TWD", "Asia/Taipei", "DELETED", "{}", userId
                     )
             ).isInstanceOf(DataIntegrityViolationException.class);
@@ -119,7 +119,7 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
             UUID wsId = UUID.randomUUID();
             jdbc.update(
                     "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                     wsId, "WS", "json-settings", "TWD", "Asia/Taipei", "ACTIVE",
                     "{\"theme\": \"dark\", \"notifications\": true}", userId
             );
@@ -135,7 +135,7 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
             assertThatThrownBy(() ->
                     jdbc.update(
                             "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                             UUID.randomUUID(), "WS", "json-arr", "TWD", "Asia/Taipei", "ACTIVE",
                             "[1, 2, 3]", userId
                     )
@@ -148,7 +148,7 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
             assertThatThrownBy(() ->
                     jdbc.update(
                             "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                             UUID.randomUUID(), "WS", "no-arch-ts", "TWD", "Asia/Taipei", "ARCHIVED", "{}", userId
                     )
             ).isInstanceOf(DataIntegrityViolationException.class);
@@ -161,7 +161,7 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
             OffsetDateTime archivedAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             jdbc.update(
                     "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, "
-                            + "created_by, archived_at, archived_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "created_by, archived_at, archived_by) VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?)",
                     wsId, "WS", "archived-ws", "TWD", "Asia/Taipei", "ARCHIVED", "{}",
                     userId, archivedAt, userId
             );
@@ -176,7 +176,7 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
             assertThatThrownBy(() ->
                     jdbc.update(
                             "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, "
-                                    + "created_by, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                    + "created_by, version) VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?)",
                             UUID.randomUUID(), "WS", "neg-ver", "TWD", "Asia/Taipei", "ACTIVE", "{}",
                             userId, -1
                     )
@@ -188,7 +188,7 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
             assertThatThrownBy(() ->
                     jdbc.update(
                             "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                             UUID.randomUUID(), "WS", "bad-creator", "TWD", "Asia/Taipei", "ACTIVE", "{}",
                             UUID.randomUUID()
                     )
@@ -224,14 +224,14 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
                     OffsetDateTime archivedAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
                     jdbc.update(
                             "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, "
-                                    + "created_by, archived_at, archived_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                    + "created_by, archived_at, archived_by) VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?)",
                             wsId, "WS-" + status, "ws-" + status.toLowerCase() + "-" + wsId.toString().substring(0, 8),
                             "TWD", "Asia/Taipei", status, "{}", userId, archivedAt, userId
                     );
                 } else {
                     jdbc.update(
                             "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                             wsId, "WS-" + status, "ws-" + status.toLowerCase() + "-" + wsId.toString().substring(0, 8),
                             "TWD", "Asia/Taipei", status, "{}", userId
                     );

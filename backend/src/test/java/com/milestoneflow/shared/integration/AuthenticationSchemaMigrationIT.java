@@ -44,42 +44,47 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
 
         @Test
         void shouldHaveV001Bootstrap() {
-            assertThat(jdbc.queryForObject(
-                    "SELECT description FROM flyway_schema_history WHERE version = '1'",
-                    String.class
-            )).isNotNull();
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '1' AND success = true",
+                    Integer.class
+            );
+            assertThat(count).isGreaterThan(0);
         }
 
         @Test
         void shouldHaveV002Identity() {
-            assertThat(jdbc.queryForObject(
-                    "SELECT description FROM flyway_schema_history WHERE version = '2'",
-                    String.class
-            )).isNotNull();
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '2' AND success = true",
+                    Integer.class
+            );
+            assertThat(count).isGreaterThan(0);
         }
 
         @Test
         void shouldHaveV003Workspace() {
-            assertThat(jdbc.queryForObject(
-                    "SELECT description FROM flyway_schema_history WHERE version = '3'",
-                    String.class
-            )).isNotNull();
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '3' AND success = true",
+                    Integer.class
+            );
+            assertThat(count).isGreaterThan(0);
         }
 
         @Test
         void shouldHaveV004Audit() {
-            assertThat(jdbc.queryForObject(
-                    "SELECT description FROM flyway_schema_history WHERE version = '4'",
-                    String.class
-            )).isNotNull();
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '4' AND success = true",
+                    Integer.class
+            );
+            assertThat(count).isGreaterThan(0);
         }
 
         @Test
         void shouldHaveV005Indexes() {
-            assertThat(jdbc.queryForObject(
-                    "SELECT description FROM flyway_schema_history WHERE version = '5'",
-                    String.class
-            )).isNotNull();
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '5' AND success = true",
+                    Integer.class
+            );
+            assertThat(count).isGreaterThan(0);
         }
     }
 

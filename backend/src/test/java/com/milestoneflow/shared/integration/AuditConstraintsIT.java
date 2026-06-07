@@ -39,7 +39,7 @@ class AuditConstraintsIT extends AbstractIntegrationTest {
         UUID id = UUID.randomUUID();
         jdbc.update(
                 "INSERT INTO workspace (id, name, slug, default_currency, timezone, status, settings, created_by) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                 id, "Test Workspace", "audit-ws-" + id.toString().substring(0, 8),
                 "TWD", "Asia/Taipei", "ACTIVE", "{}", createdBy
         );
@@ -51,7 +51,7 @@ class AuditConstraintsIT extends AbstractIntegrationTest {
         jdbc.update(
                 "INSERT INTO audit_event (id, actor_type, actor_id, action, target_type, target_id, "
                         + "workspace_id, source, summary, metadata, created_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                 id, actorType, actorId, "USER_REGISTERED", "app_user", actorId,
                 workspaceId, "API", "User registered", "{}",
                 OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC)
@@ -147,7 +147,7 @@ class AuditConstraintsIT extends AbstractIntegrationTest {
             UUID id = UUID.randomUUID();
             jdbc.update(
                     "INSERT INTO audit_event (id, actor_type, action, source, summary, metadata, created_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            + "VALUES (?, ?, ?, ?, ?, ?::jsonb, ?)",
                     id, "SYSTEM", "TEST", "INTERNAL", "Test",
                     "{\"ip\": \"127.0.0.1\", \"browser\": \"chrome\"}",
                     OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC)

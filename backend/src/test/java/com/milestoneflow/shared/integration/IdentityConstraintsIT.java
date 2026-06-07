@@ -16,6 +16,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Integration tests for V002 identity schema constraints.
  * Uses Testcontainers PostgreSQL 17 to verify real database behaviour.
+ * All token hashes use UUID-based values to avoid collisions across
+ * test classes sharing the same database context.
  */
 class IdentityConstraintsIT extends AbstractIntegrationTest {
 
@@ -52,8 +54,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                         + "session_family_id, refresh_generation, status, expires_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                id, userId,
-                "access-hash-" + id, "refresh-hash-" + id,
+                id, userId, id + "-access", id + "-refresh",
                 familyId, 0, "ACTIVE", expires
         );
         return id;
@@ -65,9 +66,13 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
         jdbc.update(
                 "INSERT INTO verification_token (id, user_id, purpose, token_hash, expires_at) "
                         + "VALUES (?, ?, ?, ?, ?)",
-                id, userId, purpose, "token-hash-" + id, expires
+                id, userId, purpose, id + "-token", expires
         );
         return id;
+    }
+
+    private String uniqueHash() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     }
 
     // ── app_user ──────────────────────────────────────────────────────────
@@ -184,7 +189,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                             + "session_family_id, refresh_generation, status, expires_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID(), UUID.randomUUID(),
-                    "a-hash", "r-hash", UUID.randomUUID(), 0, "ACTIVE", expires
+                    uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE", expires
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -204,7 +209,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                             + "session_family_id, refresh_generation, status, expires_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID(), userId,
-                    dupHash, "other-refresh", UUID.randomUUID(), 0, "ACTIVE", expires
+                    dupHash, uniqueHash(), UUID.randomUUID(), 0, "ACTIVE", expires
             );
         }).isInstanceOf(DuplicateKeyException.class);
     }
@@ -224,7 +229,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                             + "session_family_id, refresh_generation, status, expires_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID(), userId,
-                    "other-access", dupHash, UUID.randomUUID(), 0, "ACTIVE", expires
+                    uniqueHash(), dupHash, UUID.randomUUID(), 0, "ACTIVE", expires
             );
         }).isInstanceOf(DuplicateKeyException.class);
     }
@@ -239,7 +244,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                         + "session_family_id, refresh_generation, status, expires_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, "a1", "r1", familyId, 0, "ACTIVE", expires
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 0, "ACTIVE", expires
         );
 
         assertThatThrownBy(() ->
@@ -247,7 +252,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                         "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                                 + "session_family_id, refresh_generation, status, expires_at) "
                                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        UUID.randomUUID(), userId, "a2", "r2", familyId, 0, "ACTIVE", expires
+                        UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 0, "ACTIVE", expires
                 )
         ).isInstanceOf(DuplicateKeyException.class);
     }
@@ -261,7 +266,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                             + "session_family_id, refresh_generation, status, expires_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    UUID.randomUUID(), userId, "a", "r", UUID.randomUUID(), -1, "ACTIVE", expires
+                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), -1, "ACTIVE", expires
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -275,7 +280,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                             + "session_family_id, refresh_generation, status, expires_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    UUID.randomUUID(), userId, "a", "r", UUID.randomUUID(), 0, "INVALID", expires
+                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "INVALID", expires
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -289,7 +294,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                             + "session_family_id, refresh_generation, status, created_at, expires_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    UUID.randomUUID(), userId, "a", "r", UUID.randomUUID(), 0, "ACTIVE",
+                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE",
                     OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC), past
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
@@ -304,7 +309,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                             + "session_family_id, refresh_generation, status, expires_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    UUID.randomUUID(), userId, "a", "r", UUID.randomUUID(), 0, "REVOKED", expires
+                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "REVOKED", expires
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -319,13 +324,13 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                         + "session_family_id, refresh_generation, status, expires_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, "a1", "r1", familyId, 0, "ACTIVE", expires
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 0, "ACTIVE", expires
         );
         jdbc.update(
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                         + "session_family_id, refresh_generation, status, expires_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, "a2", "r2", familyId, 1, "ACTIVE", expires
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 1, "ACTIVE", expires
         );
 
         Integer count = jdbc.queryForObject(
@@ -344,13 +349,13 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                         + "session_family_id, refresh_generation, status, expires_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, "f1a", "f1r", UUID.randomUUID(), 0, "ACTIVE", expires
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE", expires
         );
         jdbc.update(
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
                         + "session_family_id, refresh_generation, status, expires_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, "f2a", "f2r", UUID.randomUUID(), 0, "ACTIVE", expires
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE", expires
         );
 
         Integer count = jdbc.queryForObject(
@@ -431,7 +436,7 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
             jdbc.update(
                     "INSERT INTO verification_token (id, user_id, purpose, token_hash, created_at, expires_at) "
                             + "VALUES (?, ?, ?, ?, ?, ?)",
-                    UUID.randomUUID(), userId, "EMAIL_VERIFICATION", "hash",
+                    UUID.randomUUID(), userId, "EMAIL_VERIFICATION", uniqueHash(),
                     OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC), past
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
