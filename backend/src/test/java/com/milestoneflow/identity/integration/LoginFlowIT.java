@@ -107,7 +107,7 @@ class LoginFlowIT extends AbstractIntegrationTest {
                     userId);
 
             assertThat(session.get("status")).isEqualTo("ACTIVE");
-            assertThat(session.get("refresh_generation")).isEqualTo(0);
+            assertThat(session.get("refresh_generation")).isEqualTo(0L);
             assertThat(session.get("session_family_id")).isNotNull();
             assertThat(((String) session.get("access_token_hash")).length()).isEqualTo(64);
             assertThat(((String) session.get("refresh_token_hash")).length()).isEqualTo(64);
