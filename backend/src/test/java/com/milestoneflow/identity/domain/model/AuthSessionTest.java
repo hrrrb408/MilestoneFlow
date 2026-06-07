@@ -1,5 +1,6 @@
 package com.milestoneflow.identity.domain.model;
 
+import com.milestoneflow.identity.domain.type.AuthSessionRevokeReason;
 import com.milestoneflow.identity.domain.type.AuthSessionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -311,6 +312,180 @@ class AuthSessionTest {
             assertThatThrownBy(() -> session.markExpired(Instant.parse("2026-06-01T12:10:00Z")))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("not expired");
+        }
+    }
+
+    // ── Refresh rotation behaviour ────────────────────────────────────────
+
+    @Nested
+    @DisplayName("revokeAsRotated")
+    class RevokeAsRotated {
+
+        @Test
+        @DisplayName("should revoke ACTIVE session as REFRESH_ROTATED")
+        void shouldRevokeAsRotated() {
+            AuthSession session = createDefaultSession();
+            Instant revokedAt = Instant.parse("2026-06-01T13:00:00Z");
+
+            session.revokeAsRotated(revokedAt);
+
+            assertThat(session.getStatus()).isEqualTo(AuthSessionStatus.REVOKED);
+            assertThat(session.getRevokedAt()).isEqualTo(revokedAt);
+            assertThat(session.getRevokeReason()).isEqualTo(AuthSessionRevokeReason.REFRESH_ROTATED);
+        }
+
+        @Test
+        @DisplayName("should be idempotent for already ROTATED session")
+        void shouldBeIdempotentForRotatedSession() {
+            AuthSession session = createDefaultSession();
+            session.revokeAsRotated(Instant.parse("2026-06-01T13:00:00Z"));
+            Instant originalRevokedAt = session.getRevokedAt();
+
+            session.revokeAsRotated(Instant.parse("2026-06-01T14:00:00Z"));
+
+            assertThat(session.getRevokedAt()).isEqualTo(originalRevokedAt);
+        }
+
+        @Test
+        @DisplayName("should reject rotating EXPIRED session")
+        void shouldRejectExpiredSession() {
+            AuthSession session = createDefaultSession();
+            session.markExpired(REFRESH_EXPIRES);
+
+            assertThatThrownBy(() -> session.revokeAsRotated(Instant.parse("2026-06-01T14:00:00Z")))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Only ACTIVE sessions can be revoked as rotated");
+        }
+
+        @Test
+        @DisplayName("should reject rotating REVOKED (non-rotated) session")
+        void shouldRejectRevokedNonRotatedSession() {
+            AuthSession session = createDefaultSession();
+            session.revoke(Instant.parse("2026-06-01T13:00:00Z"), "USER_LOGOUT");
+
+            assertThatThrownBy(() -> session.revokeAsRotated(Instant.parse("2026-06-01T14:00:00Z")))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        @DisplayName("should reject null revokedAt")
+        void shouldRejectNullRevokedAt() {
+            AuthSession session = createDefaultSession();
+
+            assertThatThrownBy(() -> session.revokeAsRotated(null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("revokeAsReplayDetected")
+    class RevokeAsReplayDetected {
+
+        @Test
+        @DisplayName("should revoke ACTIVE session as REPLAY_DETECTED")
+        void shouldRevokeActiveAsReplayDetected() {
+            AuthSession session = createDefaultSession();
+            Instant revokedAt = Instant.parse("2026-06-01T13:00:00Z");
+
+            session.revokeAsReplayDetected(revokedAt);
+
+            assertThat(session.getStatus()).isEqualTo(AuthSessionStatus.REVOKED);
+            assertThat(session.getRevokedAt()).isEqualTo(revokedAt);
+            assertThat(session.getRevokeReason()).isEqualTo(AuthSessionRevokeReason.REFRESH_REPLAY_DETECTED);
+        }
+
+        @Test
+        @DisplayName("should revoke REVOKED (rotated) session as REPLAY_DETECTED")
+        void shouldRevokeRotatedAsReplayDetected() {
+            AuthSession session = createDefaultSession();
+            session.revokeAsRotated(Instant.parse("2026-06-01T13:00:00Z"));
+
+            session.revokeAsReplayDetected(Instant.parse("2026-06-01T14:00:00Z"));
+
+            assertThat(session.getRevokeReason()).isEqualTo(AuthSessionRevokeReason.REFRESH_REPLAY_DETECTED);
+        }
+
+        @Test
+        @DisplayName("should revoke EXPIRED session as REPLAY_DETECTED")
+        void shouldRevokeExpiredAsReplayDetected() {
+            AuthSession session = createDefaultSession();
+            session.markExpired(REFRESH_EXPIRES);
+
+            session.revokeAsReplayDetected(Instant.parse("2026-07-02T00:00:00Z"));
+
+            assertThat(session.getStatus()).isEqualTo(AuthSessionStatus.REVOKED);
+            assertThat(session.getRevokeReason()).isEqualTo(AuthSessionRevokeReason.REFRESH_REPLAY_DETECTED);
+        }
+
+        @Test
+        @DisplayName("should be idempotent for already REPLAY_DETECTED session")
+        void shouldBeIdempotentForReplayDetected() {
+            AuthSession session = createDefaultSession();
+            session.revokeAsReplayDetected(Instant.parse("2026-06-01T13:00:00Z"));
+            Instant originalRevokedAt = session.getRevokedAt();
+
+            session.revokeAsReplayDetected(Instant.parse("2026-06-01T14:00:00Z"));
+
+            assertThat(session.getRevokedAt()).isEqualTo(originalRevokedAt);
+        }
+
+        @Test
+        @DisplayName("should reject null revokedAt")
+        void shouldRejectNullRevokedAt() {
+            AuthSession session = createDefaultSession();
+
+            assertThatThrownBy(() -> session.revokeAsReplayDetected(null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("isRefreshRotated")
+    class IsRefreshRotated {
+
+        @Test
+        @DisplayName("should return false for ACTIVE session")
+        void shouldReturnFalseForActive() {
+            AuthSession session = createDefaultSession();
+
+            assertThat(session.isRefreshRotated()).isFalse();
+        }
+
+        @Test
+        @DisplayName("should return true after revokeAsRotated")
+        void shouldReturnTrueAfterRotated() {
+            AuthSession session = createDefaultSession();
+            session.revokeAsRotated(Instant.parse("2026-06-01T13:00:00Z"));
+
+            assertThat(session.isRefreshRotated()).isTrue();
+        }
+
+        @Test
+        @DisplayName("should return false for REVOKED with different reason")
+        void shouldReturnFalseForOtherReason() {
+            AuthSession session = createDefaultSession();
+            session.revoke(Instant.parse("2026-06-01T13:00:00Z"), "USER_LOGOUT");
+
+            assertThat(session.isRefreshRotated()).isFalse();
+        }
+
+        @Test
+        @DisplayName("should return false for EXPIRED session")
+        void shouldReturnFalseForExpired() {
+            AuthSession session = createDefaultSession();
+            session.markExpired(REFRESH_EXPIRES);
+
+            assertThat(session.isRefreshRotated()).isFalse();
+        }
+
+        @Test
+        @DisplayName("should return false after replay detection")
+        void shouldReturnFalseAfterReplayDetection() {
+            AuthSession session = createDefaultSession();
+            session.revokeAsRotated(Instant.parse("2026-06-01T13:00:00Z"));
+            session.revokeAsReplayDetected(Instant.parse("2026-06-01T13:30:00Z"));
+
+            assertThat(session.isRefreshRotated()).isFalse();
         }
     }
 
