@@ -49,13 +49,16 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
     private UUID insertSession(UUID userId) {
         UUID id = UUID.randomUUID();
         UUID familyId = UUID.randomUUID();
-        OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
         jdbc.update(
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                        + "session_family_id, refresh_generation, status, expires_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        + "session_family_id, refresh_generation, status, created_at, "
+                        + "access_expires_at, refresh_expires_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 id, userId, id + "-access", id + "-refresh",
-                familyId, 0, "ACTIVE", expires
+                familyId, 0, "ACTIVE", createdAt, accessExpires, refreshExpires
         );
         return id;
     }
@@ -196,13 +199,17 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
     @Test
     void shouldRejectSessionWithNonExistentUser() {
         assertThatThrownBy(() -> {
-            OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             jdbc.update(
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                            + "session_family_id, refresh_generation, status, expires_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "session_family_id, refresh_generation, status, created_at, "
+                            + "access_expires_at, refresh_expires_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID(), UUID.randomUUID(),
-                    uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE", expires
+                    uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE",
+                    createdAt, accessExpires, refreshExpires
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -216,13 +223,17 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                 String.class, userId
         );
         assertThatThrownBy(() -> {
-            OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             jdbc.update(
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                            + "session_family_id, refresh_generation, status, expires_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "session_family_id, refresh_generation, status, created_at, "
+                            + "access_expires_at, refresh_expires_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID(), userId,
-                    dupHash, uniqueHash(), UUID.randomUUID(), 0, "ACTIVE", expires
+                    dupHash, uniqueHash(), UUID.randomUUID(), 0, "ACTIVE",
+                    createdAt, accessExpires, refreshExpires
             );
         }).isInstanceOf(DuplicateKeyException.class);
     }
@@ -236,13 +247,17 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
                 String.class, userId
         );
         assertThatThrownBy(() -> {
-            OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             jdbc.update(
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                            + "session_family_id, refresh_generation, status, expires_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "session_family_id, refresh_generation, status, created_at, "
+                            + "access_expires_at, refresh_expires_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID(), userId,
-                    uniqueHash(), dupHash, UUID.randomUUID(), 0, "ACTIVE", expires
+                    uniqueHash(), dupHash, UUID.randomUUID(), 0, "ACTIVE",
+                    createdAt, accessExpires, refreshExpires
             );
         }).isInstanceOf(DuplicateKeyException.class);
     }
@@ -251,21 +266,27 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
     void shouldRejectDuplicateFamilyAndGeneration() {
         UUID userId = insertUser("fam-gen@example.com");
         UUID familyId = UUID.randomUUID();
-        OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
 
         jdbc.update(
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                        + "session_family_id, refresh_generation, status, expires_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 0, "ACTIVE", expires
+                        + "session_family_id, refresh_generation, status, created_at, "
+                        + "access_expires_at, refresh_expires_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 0, "ACTIVE",
+                createdAt, accessExpires, refreshExpires
         );
 
         assertThatThrownBy(() ->
                 jdbc.update(
                         "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                                + "session_family_id, refresh_generation, status, expires_at) "
-                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 0, "ACTIVE", expires
+                                + "session_family_id, refresh_generation, status, created_at, "
+                                + "access_expires_at, refresh_expires_at) "
+                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 0, "ACTIVE",
+                        createdAt, accessExpires, refreshExpires
                 )
         ).isInstanceOf(DuplicateKeyException.class);
     }
@@ -274,12 +295,16 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
     void shouldRejectNegativeGeneration() {
         UUID userId = insertUser("neg-gen@example.com");
         assertThatThrownBy(() -> {
-            OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             jdbc.update(
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                            + "session_family_id, refresh_generation, status, expires_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), -1, "ACTIVE", expires
+                            + "session_family_id, refresh_generation, status, created_at, "
+                            + "access_expires_at, refresh_expires_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), -1, "ACTIVE",
+                    createdAt, accessExpires, refreshExpires
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -288,12 +313,16 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
     void shouldRejectInvalidSessionStatus() {
         UUID userId = insertUser("bad-session-status@example.com");
         assertThatThrownBy(() -> {
-            OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             jdbc.update(
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                            + "session_family_id, refresh_generation, status, expires_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "INVALID", expires
+                            + "session_family_id, refresh_generation, status, created_at, "
+                            + "access_expires_at, refresh_expires_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "INVALID",
+                    createdAt, accessExpires, refreshExpires
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -302,13 +331,15 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
     void shouldRejectExpiresAtBeforeCreatedAt() {
         UUID userId = insertUser("bad-expiry@example.com");
         assertThatThrownBy(() -> {
+            OffsetDateTime createdAt = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             OffsetDateTime past = OffsetDateTime.of(2020, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             jdbc.update(
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                            + "session_family_id, refresh_generation, status, created_at, expires_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "session_family_id, refresh_generation, status, created_at, "
+                            + "access_expires_at, refresh_expires_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE",
-                    OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC), past
+                    createdAt, past, past
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -317,12 +348,16 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
     void shouldRejectRevokedWithoutRevokedAt() {
         UUID userId = insertUser("no-revoke-ts@example.com");
         assertThatThrownBy(() -> {
-            OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             jdbc.update(
                     "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                            + "session_family_id, refresh_generation, status, expires_at) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "REVOKED", expires
+                            + "session_family_id, refresh_generation, status, created_at, "
+                            + "access_expires_at, refresh_expires_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "REVOKED",
+                    createdAt, accessExpires, refreshExpires
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -331,19 +366,25 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
     void shouldAllowMultipleGenerationsInSameFamily() {
         UUID userId = insertUser("multi-gen@example.com");
         UUID familyId = UUID.randomUUID();
-        OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
 
         jdbc.update(
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                        + "session_family_id, refresh_generation, status, expires_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 0, "ACTIVE", expires
+                        + "session_family_id, refresh_generation, status, created_at, "
+                        + "access_expires_at, refresh_expires_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 0, "ACTIVE",
+                createdAt, accessExpires, refreshExpires
         );
         jdbc.update(
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                        + "session_family_id, refresh_generation, status, expires_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 1, "ACTIVE", expires
+                        + "session_family_id, refresh_generation, status, created_at, "
+                        + "access_expires_at, refresh_expires_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), familyId, 1, "ACTIVE",
+                createdAt, accessExpires, refreshExpires
         );
 
         Integer count = jdbc.queryForObject(
@@ -356,19 +397,25 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
     @Test
     void shouldAllowDifferentFamiliesForSameUser() {
         UUID userId = insertUser("multi-fam@example.com");
-        OffsetDateTime expires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime createdAt = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime accessExpires = OffsetDateTime.of(2026, 6, 1, 0, 15, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime refreshExpires = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
 
         jdbc.update(
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                        + "session_family_id, refresh_generation, status, expires_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE", expires
+                        + "session_family_id, refresh_generation, status, created_at, "
+                        + "access_expires_at, refresh_expires_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE",
+                createdAt, accessExpires, refreshExpires
         );
         jdbc.update(
                 "INSERT INTO auth_session (id, user_id, access_token_hash, refresh_token_hash, "
-                        + "session_family_id, refresh_generation, status, expires_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE", expires
+                        + "session_family_id, refresh_generation, status, created_at, "
+                        + "access_expires_at, refresh_expires_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(), userId, uniqueHash(), uniqueHash(), UUID.randomUUID(), 0, "ACTIVE",
+                createdAt, accessExpires, refreshExpires
         );
 
         Integer count = jdbc.queryForObject(

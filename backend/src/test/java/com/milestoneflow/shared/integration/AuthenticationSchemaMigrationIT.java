@@ -30,7 +30,7 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
                     "SELECT COUNT(*) FROM flyway_schema_history WHERE success = true",
                     Integer.class
             );
-            assertThat(count).isGreaterThanOrEqualTo(5);
+            assertThat(count).isGreaterThanOrEqualTo(7);
         }
 
         @Test
@@ -65,6 +65,16 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
         @Test
         void shouldHaveV005Indexes() {
             assertThat(versionExists("5")).isTrue();
+        }
+
+        @Test
+        void shouldHaveV006RemoveRedundantIndex() {
+            assertThat(versionExists("6")).isTrue();
+        }
+
+        @Test
+        void shouldHaveV007ClarifyExpiration() {
+            assertThat(versionExists("7")).isTrue();
         }
 
         private boolean versionExists(String version) {
@@ -187,6 +197,24 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
                     .isEqualTo("varchar");
             assertThat(getColumnType("auth_session", "refresh_token_hash"))
                     .isEqualTo("varchar");
+        }
+
+        @Test
+        void authSessionShouldHaveAccessExpiresAt() {
+            assertThat(getColumnType("auth_session", "access_expires_at"))
+                    .isEqualTo("timestamptz");
+        }
+
+        @Test
+        void authSessionShouldHaveRefreshExpiresAt() {
+            assertThat(getColumnType("auth_session", "refresh_expires_at"))
+                    .isEqualTo("timestamptz");
+        }
+
+        @Test
+        void authSessionShouldNotHaveOldExpiresAt() {
+            List<String> columns = getColumnNames("auth_session");
+            assertThat(columns).doesNotContain("expires_at");
         }
 
         @Test
