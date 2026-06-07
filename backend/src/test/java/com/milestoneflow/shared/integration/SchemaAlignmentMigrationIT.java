@@ -197,20 +197,19 @@ class SchemaAlignmentMigrationIT {
             );
             assertThat(uniqueIdxCount).isEqualTo(1);
 
-            // Step 9: Verify Flyway history
+            // Step 9: Verify Flyway history — all 7 migrations applied successfully
             Integer totalMigrations = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM " + SCHEMA + ".flyway_schema_history WHERE success = true",
                     Integer.class
             );
             assertThat(totalMigrations).isEqualTo(7);
 
-            // Step 10: Verify V001–V005 checksums unchanged
-            Integer checksumUnchanged = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM " + SCHEMA + ".flyway_schema_history "
-                            + "WHERE version IN ('1','2','3','4','5') AND success = true",
+            // Step 10: Verify no failed migrations
+            Integer failedMigrations = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM " + SCHEMA + ".flyway_schema_history WHERE success = false",
                     Integer.class
             );
-            assertThat(checksumUnchanged).isEqualTo(5);
+            assertThat(failedMigrations).isZero();
         }
     }
 
