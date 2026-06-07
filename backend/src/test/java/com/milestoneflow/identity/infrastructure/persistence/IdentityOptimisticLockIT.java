@@ -10,7 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import jakarta.persistence.OptimisticLockException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>Uses JPA for the initial save, then JDBC to simulate a concurrent
  * update that bypasses JPA's version check, and finally verifies that
  * JPA detects the stale version and throws
- * {@link ObjectOptimisticLockingFailureException}.
+ * {@link OptimisticLockException}.
  */
 @Transactional
 class IdentityOptimisticLockIT extends AbstractIntegrationTest {
@@ -67,7 +67,7 @@ class IdentityOptimisticLockIT extends AbstractIntegrationTest {
         assertThatThrownBy(() -> {
             appUserRepository.save(loaded);
             entityManager.flush();
-        }).isInstanceOf(ObjectOptimisticLockingFailureException.class);
+        }).isInstanceOf(OptimisticLockException.class);
 
         // Verify: the JDBC update's change persisted, JPA's did not
         entityManager.clear();
