@@ -35,3 +35,7 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.flywaydb: DEBUG
+
+milestoneflow:
+  email:
+    provider: noop

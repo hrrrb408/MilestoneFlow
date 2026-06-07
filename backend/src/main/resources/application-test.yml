@@ -31,3 +31,7 @@ logging:
     com.milestoneflow: DEBUG
     org.flywaydb: INFO
     org.hibernate: WARN
+
+milestoneflow:
+  email:
+    provider: noop

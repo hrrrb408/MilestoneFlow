@@ -3,6 +3,8 @@ package com.milestoneflow.identity.infrastructure.email;
 import com.milestoneflow.identity.application.port.out.VerificationEmailSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.Locale;
@@ -14,9 +16,22 @@ import java.util.Locale;
  * send real emails. It logs the recipient and user ID but never logs
  * the raw verification token.
  *
- * <p>Real email delivery adapter is deferred to a future task.
+ * <p>Only activated when both conditions are met:
+ * <ul>
+ *   <li>Active Spring profile is {@code local} or {@code test}</li>
+ *   <li>Configuration property {@code milestoneflow.email.provider} is set to {@code noop}</li>
+ * </ul>
+ *
+ * <p>In production, neither condition is met, so no {@link VerificationEmailSender}
+ * bean exists. This causes the application context to fail at startup (fail-closed),
+ * preventing registration without a real email sender.
+ *
+ * <p><strong>Release Blocker:</strong> A real {@link VerificationEmailSender}
+ * implementation is required before production deployment.
  */
 @Component
+@Profile({"local", "test"})
+@ConditionalOnProperty(name = "milestoneflow.email.provider", havingValue = "noop")
 public class NoopVerificationEmailSender implements VerificationEmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(NoopVerificationEmailSender.class);
