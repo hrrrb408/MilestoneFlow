@@ -21,7 +21,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
@@ -60,9 +59,6 @@ class EmailVerificationIT extends AbstractIntegrationTest {
 
     @Autowired
     private EmailVerificationProperties properties;
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
 
     private String uniqueSuffix;
 
@@ -129,7 +125,7 @@ class EmailVerificationIT extends AbstractIntegrationTest {
 
         @Test
         @DisplayName("rejects expired token")
-        void rejectsExpiredToken() {
+        void rejectsExpiredToken() throws Exception {
             String rawToken = "expired-token-" + uniqueSuffix;
             String tokenHash = tokenHasher.hash(rawToken);
 
@@ -139,17 +135,16 @@ class EmailVerificationIT extends AbstractIntegrationTest {
                     passwordEncoder.encode("password123"), "en");
             appUserRepository.save(user);
 
-            // Insert token directly with past timestamps to satisfy
-            // ck_verification_token_expiry (expires_at > created_at) while
-            // being expired relative to now()
-            UUID tokenId = idGenerator.nextId();
-            Instant oneHourAgo = Instant.now(clock).minusSeconds(3600);
-            Instant tenSecondsAgo = Instant.now(clock).minusSeconds(10);
-            jdbcTemplate.update(
-                    "INSERT INTO verification_token (id, user_id, purpose, token_hash, expires_at, used_at, created_at) " +
-                    "VALUES (?, ?, 'EMAIL_VERIFICATION', ?, ?, NULL, ?)",
-                    tokenId, userId, tokenHash, tenSecondsAgo, oneHourAgo
-            );
+            // Create token with very short TTL to satisfy ck_verification_token_expiry
+            // (expires_at > created_at), then wait for it to expire.
+            // Clock is systemUTC() in IT, so time advances naturally.
+            VerificationToken token = VerificationToken.create(
+                    idGenerator.nextId(), userId, VerificationTokenPurpose.EMAIL_VERIFICATION,
+                    tokenHash, Instant.now(clock).plusMillis(50));
+            verificationTokenRepository.save(token);
+
+            // Wait for the token to expire
+            Thread.sleep(200);
 
             ResponseEntity<Map> response = confirmToken(rawToken);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
