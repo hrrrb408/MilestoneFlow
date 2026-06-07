@@ -23,6 +23,10 @@ import java.util.List;
 /**
  * Centralised exception handler that maps all exceptions to the unified
  * {@link ApiErrorResponse} format defined in architecture spec §10.
+ *
+ * <p>This handler covers framework-level exceptions only. Business-module-specific
+ * exceptions are handled by their own module-local {@code @RestControllerAdvice}
+ * classes to respect ARCH-001 (shared must not depend on business modules).
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -158,7 +162,7 @@ public class GlobalExceptionHandler {
         return build(status, code, message, path, List.of());
     }
 
-    private ResponseEntity<ApiErrorResponse> build(
+    protected ResponseEntity<ApiErrorResponse> build(
             HttpStatus status,
             String code,
             String message,
@@ -178,7 +182,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(body);
     }
 
-    private String resolveRequestId() {
+    protected String resolveRequestId() {
         String requestId = MDC.get(RequestIdFilter.MDC_KEY);
         return requestId != null ? requestId : "unknown";
     }
