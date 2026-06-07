@@ -51,7 +51,7 @@ class PasswordPolicyTest {
         @Test
         @DisplayName("accepts Unicode password")
         void acceptsUnicode() {
-            PasswordPolicy.validate("密码密码密码密");
+            PasswordPolicy.validate("密码密码密码密码");
         }
 
         @Test
