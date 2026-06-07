@@ -1,7 +1,12 @@
 package com.milestoneflow.identity.api;
 
+import com.milestoneflow.identity.application.exception.RefreshTokenMissingException;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
+import com.milestoneflow.identity.domain.exception.AuthSessionRevokedException;
 import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
+import com.milestoneflow.identity.domain.exception.RefreshTokenExpiredException;
+import com.milestoneflow.identity.domain.exception.RefreshTokenInvalidException;
+import com.milestoneflow.identity.domain.exception.RefreshTokenReusedException;
 import com.milestoneflow.identity.domain.exception.VerificationTokenInvalidException;
 import com.milestoneflow.shared.api.ApiErrorResponse;
 import org.hibernate.exception.ConstraintViolationException;
@@ -293,6 +298,93 @@ class IdentityExceptionHandlerTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
             assertThat(response.getBody().code()).isEqualTo("AUTH_ACCOUNT_DISABLED");
+        }
+    }
+
+    // ── Refresh token exceptions ────────────────────────────────────────
+
+    @Nested
+    @DisplayName("RefreshTokenMissingException")
+    class RefreshTokenMissing {
+
+        @Test
+        @DisplayName("maps to 401 AUTH_UNAUTHENTICATED")
+        void mapsTo401() {
+            ResponseEntity<ApiErrorResponse> response = handler.handleRefreshTokenMissing(
+                    new RefreshTokenMissingException(),
+                    new MockHttpServletRequest("/auth/refresh")
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_UNAUTHENTICATED");
+        }
+    }
+
+    @Nested
+    @DisplayName("RefreshTokenInvalidException")
+    class RefreshTokenInvalid {
+
+        @Test
+        @DisplayName("maps to 401 AUTH_REFRESH_TOKEN_INVALID")
+        void mapsTo401() {
+            ResponseEntity<ApiErrorResponse> response = handler.handleRefreshTokenInvalid(
+                    new RefreshTokenInvalidException(),
+                    new MockHttpServletRequest("/auth/refresh")
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_REFRESH_TOKEN_INVALID");
+        }
+    }
+
+    @Nested
+    @DisplayName("RefreshTokenExpiredException")
+    class RefreshTokenExpired {
+
+        @Test
+        @DisplayName("maps to 401 AUTH_REFRESH_TOKEN_EXPIRED")
+        void mapsTo401() {
+            ResponseEntity<ApiErrorResponse> response = handler.handleRefreshTokenExpired(
+                    new RefreshTokenExpiredException(),
+                    new MockHttpServletRequest("/auth/refresh")
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_REFRESH_TOKEN_EXPIRED");
+        }
+    }
+
+    @Nested
+    @DisplayName("RefreshTokenReusedException")
+    class RefreshTokenReused {
+
+        @Test
+        @DisplayName("maps to 401 AUTH_REFRESH_TOKEN_REUSED")
+        void mapsTo401() {
+            ResponseEntity<ApiErrorResponse> response = handler.handleRefreshTokenReused(
+                    new RefreshTokenReusedException(),
+                    new MockHttpServletRequest("/auth/refresh")
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_REFRESH_TOKEN_REUSED");
+        }
+    }
+
+    @Nested
+    @DisplayName("AuthSessionRevokedException")
+    class AuthSessionRevoked {
+
+        @Test
+        @DisplayName("maps to 401 AUTH_SESSION_REVOKED")
+        void mapsTo401() {
+            ResponseEntity<ApiErrorResponse> response = handler.handleAuthSessionRevoked(
+                    new AuthSessionRevokedException(),
+                    new MockHttpServletRequest("/auth/refresh")
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_SESSION_REVOKED");
         }
     }
 
