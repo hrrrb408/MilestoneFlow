@@ -52,3 +52,8 @@ logging:
   level:
     root: INFO
     com.milestoneflow: INFO
+
+milestoneflow:
+  auth:
+    email-verification:
+      token-ttl: PT24H

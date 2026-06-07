@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>ARCH-007: repositories must not reside in api layer</li>
  *   <li>ARCH-008: @Configuration classes must have Config/Configuration suffix</li>
  *   <li>ARCH-009: @RestController classes must have Controller suffix</li>
+ *   <li>ARCH-010: Spring Data Repository interfaces must be package-private</li>
  * </ol>
  *
  * @see <a href="backend/docs/architecture/ARCHITECTURE_TESTING.md">ARCHITECTURE_TESTING.md</a>
@@ -199,6 +200,19 @@ class ArchitectureRulesTest {
         ArchRule rule = classes()
                 .that().areAnnotatedWith("org.springframework.web.bind.annotation.RestController")
                 .should().haveSimpleNameEndingWith("Controller")
+                .allowEmptyShould(true);
+
+        rule.check(productionClasses);
+    }
+
+    // ── ARCH-010: Spring Data repositories must be package-private ──────────
+
+    @Test
+    @DisplayName("ARCH-010: Spring Data Repository interfaces must be package-private")
+    void springDataRepositoriesMustBePackagePrivate() {
+        ArchRule rule = classes()
+                .that().implement("org.springframework.data.jpa.repository.JpaRepository")
+                .should().notBePublic()
                 .allowEmptyShould(true);
 
         rule.check(productionClasses);

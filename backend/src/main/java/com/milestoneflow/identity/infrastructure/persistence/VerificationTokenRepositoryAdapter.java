@@ -45,4 +45,15 @@ public class VerificationTokenRepositoryAdapter implements VerificationTokenRepo
                                                           VerificationTokenPurpose purpose) {
         return delegate.findByUserIdAndPurpose(userId, purpose);
     }
+
+    @Override
+    public Optional<VerificationToken> findByTokenHashAndPurposeForUpdate(
+            String tokenHash, VerificationTokenPurpose purpose) {
+        return delegate.findByTokenHashAndPurposeForUpdate(tokenHash, purpose);
+    }
+
+    @Override
+    public void deleteUnusedByUserIdAndPurpose(UUID userId, VerificationTokenPurpose purpose) {
+        delegate.deleteUnusedByUserIdAndPurpose(userId, purpose);
+    }
 }
