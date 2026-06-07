@@ -37,8 +37,9 @@ class VerificationTokenRepositoryIT extends AbstractIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        AppUser user = AppUser.create(UUID.randomUUID(), "token@example.test",
-                "token@example.test", "Token User", "a".repeat(60), "zh-TW");
+        String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
+        AppUser user = AppUser.create(UUID.randomUUID(), "token-" + uniqueSuffix + "@example.test",
+                "token-" + uniqueSuffix + "@example.test", "Token User", "a".repeat(60), "zh-TW");
         appUserRepository.save(user);
         userId = user.getId();
     }

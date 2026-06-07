@@ -35,8 +35,9 @@ class IdentityOptimisticLockIT extends AbstractIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        AppUser user = AppUser.create(UUID.randomUUID(), "lock@example.test",
-                "lock@example.test", "Lock User", "a".repeat(60), "zh-TW");
+        String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
+        AppUser user = AppUser.create(UUID.randomUUID(), "lock-" + uniqueSuffix + "@example.test",
+                "lock-" + uniqueSuffix + "@example.test", "Lock User", "a".repeat(60), "zh-TW");
         appUserRepository.save(user);
         userId = user.getId();
     }

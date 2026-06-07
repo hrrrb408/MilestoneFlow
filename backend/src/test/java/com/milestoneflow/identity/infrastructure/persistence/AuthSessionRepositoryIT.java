@@ -38,8 +38,9 @@ class AuthSessionRepositoryIT extends AbstractIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        AppUser user = AppUser.create(UUID.randomUUID(), "session@example.test",
-                "session@example.test", "Session User", "a".repeat(60), "zh-TW");
+        String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
+        AppUser user = AppUser.create(UUID.randomUUID(), "session-" + uniqueSuffix + "@example.test",
+                "session-" + uniqueSuffix + "@example.test", "Session User", "a".repeat(60), "zh-TW");
         appUserRepository.save(user);
         userId = user.getId();
     }
