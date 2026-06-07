@@ -56,6 +56,12 @@
             <version>${java-uuid-generator.version}</version>
         </dependency>
 
+        <!-- Security (crypto only, not full Spring Security) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <!-- Database -->
         <dependency>
             <groupId>org.postgresql</groupId>
