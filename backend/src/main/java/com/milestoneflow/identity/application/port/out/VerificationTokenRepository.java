@@ -35,4 +35,28 @@ public interface VerificationTokenRepository {
 
     List<VerificationToken> findByUserIdAndPurpose(UUID userId,
                                                    VerificationTokenPurpose purpose);
+
+    /**
+     * Finds a token by hash and purpose with a pessimistic write lock.
+     *
+     * <p>Used during email verification confirmation to prevent concurrent
+     * token reuse. The lock is held within the caller's transaction.
+     *
+     * @param tokenHash SHA-256 hash of the raw token
+     * @param purpose   the token purpose
+     * @return the token if found, empty otherwise
+     */
+    Optional<VerificationToken> findByTokenHashAndPurposeForUpdate(String tokenHash,
+                                                                    VerificationTokenPurpose purpose);
+
+    /**
+     * Deletes all unused tokens for the given user and purpose.
+     *
+     * <p>Used during resend to invalidate old EMAIL_VERIFICATION tokens.
+     * Only deletes tokens where {@code used_at} is null.
+     *
+     * @param userId  the user ID
+     * @param purpose the token purpose to target
+     */
+    void deleteUnusedByUserIdAndPurpose(UUID userId, VerificationTokenPurpose purpose);
 }
