@@ -128,15 +128,21 @@ class ArchitectureRulesTest {
     @Test
     @DisplayName("ARCH-005: modules must not access other modules' infrastructure")
     void modulesMustNotAccessOtherModulesInfrastructure() {
-        ArchRule rule = noClasses()
-                .that().resideInAnyPackage(businessModulePackages())
-                .should().dependOnClassesThat()
-                .resideInAnyPackage(otherModuleInfrastructurePackages())
-                .allowEmptyShould(true);
+        // Check each module against only OTHER modules' infrastructure packages.
+        // A module's own infrastructure classes may depend on each other — that
+        // is the expected adapter pattern. Cross-module infrastructure coupling
+        // is what this rule prevents.
+        for (int i = 0; i < BUSINESS_MODULES.length; i++) {
+            String[] otherInfraPackages = otherModuleInfrastructurePackagesExcluding(i);
 
-        // This rule will pass vacuously when business modules don't exist yet.
-        // It becomes enforceable as modules are added.
-        rule.check(productionClasses);
+            ArchRule rule = noClasses()
+                    .that().resideInAPackage(".." + BUSINESS_MODULES[i] + "..")
+                    .should().dependOnClassesThat()
+                    .resideInAnyPackage(otherInfraPackages)
+                    .allowEmptyShould(true);
+
+            rule.check(productionClasses);
+        }
     }
 
     // ── ARCH-006: controllers must not return JPA entities ────────────────
@@ -161,7 +167,10 @@ class ArchitectureRulesTest {
     @Test
     @DisplayName("ARCH-007: repository types must not reside in api layer")
     void repositoriesMustNotResideInApiLayer() {
-        ArchRule rule = noClasses()
+        // Repository interfaces and implementations must be outside the api layer.
+        // Uses classes() (not noClasses()) so that the rule asserts repositories
+        // should reside outside of the api package.
+        ArchRule rule = classes()
                 .that().haveSimpleNameEndingWith("Repository")
                 .should().resideOutsideOfPackage("..api..")
                 .allowEmptyShould(true);
@@ -221,6 +230,21 @@ class ArchitectureRulesTest {
         String[] packages = new String[BUSINESS_MODULES.length];
         for (int i = 0; i < BUSINESS_MODULES.length; i++) {
             packages[i] = ".." + BUSINESS_MODULES[i] + ".infrastructure..";
+        }
+        return packages;
+    }
+
+    /**
+     * Returns infrastructure packages for all modules EXCEPT the one at the
+     * given index — used by ARCH-005 to check cross-module dependencies only.
+     */
+    private static String[] otherModuleInfrastructurePackagesExcluding(int excludeIndex) {
+        String[] packages = new String[BUSINESS_MODULES.length - 1];
+        int idx = 0;
+        for (int i = 0; i < BUSINESS_MODULES.length; i++) {
+            if (i != excludeIndex) {
+                packages[idx++] = ".." + BUSINESS_MODULES[i] + ".infrastructure..";
+            }
         }
         return packages;
     }
