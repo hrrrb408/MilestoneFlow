@@ -139,13 +139,19 @@ class AuthenticationIndexesIT extends AbstractIntegrationTest {
         }
 
         @Test
-        void familyGenerationIndexShouldExist() {
-            assertThat(indexExists("auth_session", "idx_auth_session_family")).isTrue();
+        void familyGenerationRedundantIndexShouldNotExist() {
+            // V006 removed idx_auth_session_family because it duplicated the
+            // unique constraint index uk_auth_session_family_gen on the same columns.
+            assertThat(indexExists("auth_session", "idx_auth_session_family")).isFalse();
         }
 
         @Test
-        void familyGenerationIndexColumns() {
-            List<String> cols = getIndexColumns("idx_auth_session_family");
+        void familyGenerationUniqueConstraintIndexShouldExist() {
+            // The unique constraint uk_auth_session_family_gen creates an implicit
+            // unique B-tree index — this is the authoritative index for family generation lookup.
+            assertThat(indexExists("auth_session", "uk_auth_session_family_gen")).isTrue();
+            assertThat(isUniqueIndex("uk_auth_session_family_gen")).isTrue();
+            List<String> cols = getIndexColumns("uk_auth_session_family_gen");
             assertThat(cols).containsExactly("session_family_id", "refresh_generation");
         }
     }
