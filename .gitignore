@@ -10,3 +10,6 @@ Thumbs.db
 # Environment
 .env
 *.env.local
+
+# Tool directories
+/.claude/
