@@ -29,7 +29,7 @@ public record EmailVerificationProperties(Duration tokenTtl) {
         if (tokenTtl == null) {
             tokenTtl = DEFAULT_TTL;
         }
-        if (tokenTtl.isNegativeOrZero()) {
+        if (tokenTtl.isZero() || tokenTtl.isNegative()) {
             throw new IllegalArgumentException(
                     "milestoneflow.auth.email-verification.token-ttl must be positive");
         }

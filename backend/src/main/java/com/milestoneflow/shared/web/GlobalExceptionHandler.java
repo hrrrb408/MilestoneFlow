@@ -153,7 +153,7 @@ public class GlobalExceptionHandler {
 
     // ── Helpers ────────────────────────────────────────────
 
-    private ResponseEntity<ApiErrorResponse> build(
+    protected ResponseEntity<ApiErrorResponse> build(
             HttpStatus status,
             String code,
             String message,
