@@ -46,7 +46,7 @@ class IdentityOptimisticLockIT extends AbstractIntegrationTest {
     void shouldDetectConcurrentUpdate() {
         // Transaction 1: load and modify
         AppUser user1 = appUserRepository.findById(userId).orElseThrow();
-        user1.activateAfterEmailVerification(Instant.parse("2026-06-01T12:00:00Z"));
+        user1.activateAfterEmailVerification(Instant.parse("2027-06-01T12:00:00Z"));
 
         // Transaction 2: load same user via direct EM (bypasses repository cache)
         entityManager.clear(); // detach all managed entities

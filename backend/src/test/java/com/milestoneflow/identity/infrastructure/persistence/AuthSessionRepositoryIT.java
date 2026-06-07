@@ -31,8 +31,8 @@ class AuthSessionRepositoryIT extends AbstractIntegrationTest {
     @Autowired
     private AppUserRepository appUserRepository;
 
-    private static final Instant ACCESS_EXPIRES = Instant.parse("2026-06-01T12:15:00Z");
-    private static final Instant REFRESH_EXPIRES = Instant.parse("2026-07-01T12:00:00Z");
+    private static final Instant ACCESS_EXPIRES = Instant.parse("2027-06-01T12:15:00Z");
+    private static final Instant REFRESH_EXPIRES = Instant.parse("2027-07-01T12:00:00Z");
 
     private UUID userId;
 

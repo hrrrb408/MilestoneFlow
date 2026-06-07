@@ -37,8 +37,8 @@ class AppUserRepositoryIT extends AbstractIntegrationTest {
     private VerificationTokenRepository verificationTokenRepository;
 
     private static final Instant FIXED_INSTANT = Instant.parse("2026-06-01T12:00:00Z");
-    private static final Instant ACCESS_EXPIRES = Instant.parse("2026-06-01T12:15:00Z");
-    private static final Instant REFRESH_EXPIRES = Instant.parse("2026-07-01T12:00:00Z");
+    private static final Instant ACCESS_EXPIRES = Instant.parse("2027-06-01T12:15:00Z");
+    private static final Instant REFRESH_EXPIRES = Instant.parse("2027-07-01T12:00:00Z");
 
     private AppUser createTestUser(String suffix) {
         return AppUser.create(

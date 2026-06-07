@@ -31,7 +31,7 @@ class VerificationTokenRepositoryIT extends AbstractIntegrationTest {
     @Autowired
     private AppUserRepository appUserRepository;
 
-    private static final Instant EXPIRES_AT = Instant.parse("2026-06-02T12:00:00Z");
+    private static final Instant EXPIRES_AT = Instant.parse("2027-06-02T12:00:00Z");
 
     private UUID userId;
 
