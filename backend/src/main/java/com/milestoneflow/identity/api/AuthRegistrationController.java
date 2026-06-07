@@ -69,7 +69,7 @@ public class AuthRegistrationController {
         RegistrationResponse response = new RegistrationResponse(
                 result.userId().toString(),
                 result.email(),
-                result.status().name()
+                result.status()
         );
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -115,7 +115,7 @@ public class AuthRegistrationController {
         EmailVerificationResponse response = new EmailVerificationResponse(
                 result.userId().toString(),
                 result.email(),
-                result.status().name()
+                result.status()
         );
 
         return ResponseEntity.ok(ApiResponse.of(response, resolveRequestId()));
