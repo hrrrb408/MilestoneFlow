@@ -60,6 +60,7 @@ public class SecurityConfiguration {
                                 "/auth/email-verification/resend",
                                 "/auth/email-verification/confirm",
                                 "/auth/login",
+                                "/auth/refresh",
                                 "/actuator/health",
                                 "/actuator/info"
                         ))
@@ -74,6 +75,7 @@ public class SecurityConfiguration {
                                 "/auth/email-verification/resend",
                                 "/auth/email-verification/confirm",
                                 "/auth/login",
+                                "/auth/refresh",
                                 "/actuator/health",
                                 "/actuator/info"
                         ).permitAll()

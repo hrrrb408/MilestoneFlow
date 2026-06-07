@@ -18,7 +18,7 @@ public interface RefreshTokenUseCase {
      *
      * @param command contains the raw refresh token from the cookie
      * @return result with new raw tokens for cookie setting
-     * @throws com.milestoneflow.identity.domain.exception.RefreshTokenMissingException if no token provided
+     * @throws com.milestoneflow.identity.application.exception.RefreshTokenMissingException if no token provided
      * @throws com.milestoneflow.identity.domain.exception.RefreshTokenInvalidException if token not found
      * @throws com.milestoneflow.identity.domain.exception.RefreshTokenExpiredException if token expired
      * @throws com.milestoneflow.identity.domain.exception.RefreshTokenReusedException if replay detected
