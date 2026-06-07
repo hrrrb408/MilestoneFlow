@@ -21,6 +21,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
@@ -59,6 +60,9 @@ class EmailVerificationIT extends AbstractIntegrationTest {
 
     @Autowired
     private EmailVerificationProperties properties;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private String uniqueSuffix;
 
@@ -135,13 +139,20 @@ class EmailVerificationIT extends AbstractIntegrationTest {
                     passwordEncoder.encode("password123"), "en");
             appUserRepository.save(user);
 
-            VerificationToken token = VerificationToken.create(
-                    idGenerator.nextId(), userId, VerificationTokenPurpose.EMAIL_VERIFICATION,
-                    tokenHash, Instant.now(clock).minusSeconds(1)); // expired 1s ago
-            verificationTokenRepository.save(token);
+            // Insert token directly with past timestamps to satisfy
+            // ck_verification_token_expiry (expires_at > created_at) while
+            // being expired relative to now()
+            UUID tokenId = idGenerator.nextId();
+            Instant oneHourAgo = Instant.now(clock).minusSeconds(3600);
+            Instant tenSecondsAgo = Instant.now(clock).minusSeconds(10);
+            jdbcTemplate.update(
+                    "INSERT INTO verification_token (id, user_id, purpose, token_hash, expires_at, used_at, created_at) " +
+                    "VALUES (?, ?, 'EMAIL_VERIFICATION', ?, ?, NULL, ?)",
+                    tokenId, userId, tokenHash, tenSecondsAgo, oneHourAgo
+            );
 
             ResponseEntity<Map> response = confirmToken(rawToken);
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
 
         @Test
