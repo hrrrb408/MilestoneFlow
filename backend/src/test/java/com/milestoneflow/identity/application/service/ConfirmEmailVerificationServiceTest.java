@@ -69,7 +69,7 @@ class ConfirmEmailVerificationServiceTest {
             EmailVerificationResult result = service.confirm(new ConfirmEmailVerificationCommand("raw-token"));
 
             assertThat(result.userId()).isEqualTo(userId);
-            assertThat(result.status()).isEqualTo(UserStatus.ACTIVE);
+            assertThat(result.status()).isEqualTo("ACTIVE");
         }
 
         @Test

@@ -97,7 +97,7 @@ class RegisterUserServiceTest {
 
             assertThat(result.userId()).isEqualTo(userId);
             assertThat(result.email()).isEqualTo("User@Example.COM");
-            assertThat(result.status()).isEqualTo(UserStatus.PENDING_VERIFICATION);
+            assertThat(result.status()).isEqualTo("PENDING_VERIFICATION");
         }
 
         @Test
