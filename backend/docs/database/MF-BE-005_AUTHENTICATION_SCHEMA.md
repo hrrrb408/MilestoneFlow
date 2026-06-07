@@ -2,7 +2,9 @@
 
 ## Task Scope
 
-MF-BE-005 creates the B1 authentication database schema via Flyway migrations V002–V005. This is pure database structure — no Java Entity, Repository, Service, or Controller.
+MF-BE-005 creates the B1 authentication database schema via Flyway migrations V002–V005.
+MF-BE-005A aligns the schema via V006–V007 (index cleanup + expiration calibration).
+This is pure database structure — no Java Entity, Repository, Service, or Controller.
 
 ## Migration Files
 
@@ -12,8 +14,10 @@ MF-BE-005 creates the B1 authentication database schema via Flyway migrations V0
 | V003 | Workspace | workspace, workspace_membership |
 | V004 | Audit | audit_event + append-only trigger |
 | V005 | Indexes | Query indexes for all tables |
+| V006 | Index cleanup | Remove redundant auth_session family index |
+| V007 | Expiration calibration | Split expires_at into access/refresh expiry |
 
-V001 (bootstrap) was not modified.
+V001 (bootstrap) was not modified. V001–V005 unchanged per MF-BE-005A.
 
 ## Table Summary
 
@@ -36,7 +40,9 @@ Opaque token session with family-based refresh rotation.
 - **Family**: `session_family_id uuid NOT NULL` groups sessions from the same login chain
 - **Generation**: `refresh_generation bigint ≥ 0`, unique within a family
 - **Status**: ACTIVE / REVOKED / EXPIRED
-- **Expiry**: `expires_at > created_at`
+- **Access Expiry**: `access_expires_at timestamptz NOT NULL` — when the access token expires
+- **Refresh Expiry**: `refresh_expires_at timestamptz NOT NULL` — when the refresh token expires
+- **Expiry Constraints**: `access_expires_at > created_at`, `refresh_expires_at > created_at`, `refresh_expires_at >= access_expires_at`
 - **Revoked consistency**: REVOKED requires `revoked_at IS NOT NULL`
 - **Unique**: access_token_hash, refresh_token_hash, (session_family_id, refresh_generation)
 - **FK**: user_id → app_user(id) ON DELETE RESTRICT
@@ -86,6 +92,7 @@ Immutable business and security audit log.
 - **Metadata**: `jsonb NULL` — never contains passwords, tokens, cookies, or request bodies
 - **No update_at / deleted_at**: This is an append-only table
 - **Append-only protection**: Trigger `fn_reject_audit_mutation()` rejects UPDATE and DELETE
+- **Decision**: Per B1 §16.6 (Frozen). See MF-BE-005A_SCHEMA_ALIGNMENT §3 for full decision record.
 
 ## Token Hash Principle
 
@@ -110,7 +117,6 @@ All tokens (access, refresh, verification) are stored as SHA-256 hex hashes (`va
 | uk_verification_token_hash | verification_token | token_hash | Yes | — |
 | idx_auth_session_user_status | auth_session | user_id, status | No | — |
 | idx_auth_session_family_status | auth_session | session_family_id, status | No | — |
-| idx_auth_session_family | auth_session | session_family_id, refresh_generation | No | — |
 | idx_verification_token_user_purpose | verification_token | user_id, purpose | No | — |
 | idx_verification_token_lookup | verification_token | token_hash, purpose | No | used_at IS NULL |
 | idx_workspace_membership_workspace_status | workspace_membership | workspace_id, status | No | — |
@@ -120,7 +126,9 @@ All tokens (access, refresh, verification) are stored as SHA-256 hex hashes (`va
 | idx_audit_event_workspace_time | audit_event | workspace_id, created_at DESC | No | workspace_id IS NOT NULL |
 | idx_audit_event_request | audit_event | request_id | No | request_id IS NOT NULL |
 
-No duplicate indexes found. No JSONB GIN indexes created (no JSONB query requirements yet).
+Removed in V006: `idx_auth_session_family` (redundant with `uk_auth_session_family_gen`).
+
+No duplicate indexes. No JSONB GIN indexes created (no JSONB query requirements yet).
 
 ## Workspace Isolation
 
@@ -138,11 +146,12 @@ Integration tests (Testcontainers PostgreSQL 17):
 
 | Test Class | Tests | Verified SQLSTATEs |
 |------------|-------|--------------------|
-| AuthenticationSchemaMigrationIT | ~25 | — |
+| AuthenticationSchemaMigrationIT | ~28 | — |
 | IdentityConstraintsIT | ~30 | 23502, 23503, 23505, 23514 |
 | WorkspaceConstraintsIT | ~25 | 23502, 23503, 23505, 23514 |
 | AuditConstraintsIT | ~20 | 23502, 23503, 23514 |
 | AuthenticationIndexesIT | ~30 | — |
+| SchemaAlignmentMigrationIT | ~12 | 23514 |
 
 ## Future Java ORM Notes
 
@@ -152,6 +161,8 @@ Integration tests (Testcontainers PostgreSQL 17):
 - Tenant business tables need composite `UNIQUE(workspace_id, id)` for child FK (ADR-BE-006)
 - `workspace_membership.role` CHECK only includes OWNER — V0.2 migration adds ADMIN, MEMBER, VIEWER
 - `uk_workspace_membership_active_user` partial unique index is V0.1 only — multi-workspace support requires a migration to drop it
+- `auth_session` maps `access_expires_at` and `refresh_expires_at` as `Instant` — no database default TTL
+- `audit_event` field names per B1 §16.6: `actor_id`, `actor_type`, `target_type`, `target_id`, `created_at`, `metadata jsonb NULL`
 
 ## Known Limitations
 
@@ -160,3 +171,5 @@ Integration tests (Testcontainers PostgreSQL 17):
 - Audit append-only trigger raises exception but does not log the attempt (application should catch and log)
 - `app_user.created_by` is NULL for self-registration (no authenticated user exists yet)
 - No email format validation at database level (application validation handles this)
+- `audit_event.metadata` is nullable — application should handle both NULL and `{}` consistently
+- `audit_event.request_id` is `varchar(36)` — all actual values are UUIDs (future migration to `uuid` type recommended)
