@@ -183,9 +183,13 @@ New methods:
 - `@Lock(LockModeType.PESSIMISTIC_WRITE)` on the for-update query
 - `@Modifying @Query` for the delete operation
 
-### Exception Conversion
+### Exception Conversion (MF-BE-007A)
 
-The `RegisterUserService` catches `DataIntegrityViolationException` and converts only `uk_app_user_email_normalized` constraint violations to `EmailAlreadyExistsException`. Other database errors are re-thrown.
+The infrastructure adapter (`AppUserRepositoryAdapter`) uses `ConstraintViolationMapper` to inspect Hibernate's `ConstraintViolationException.getConstraintName()`. Only `uk_app_user_email_normalized` is mapped to `EmailAlreadyExistsException`. All other data integrity errors are re-thrown.
+
+A safety-net handler in `IdentityExceptionHandler` catches `DataIntegrityViolationException` that escape the adapter (e.g., JPA deferred flush) and performs the same constraint name check via reflection (to avoid ArchUnit violations from direct Hibernate dependency in the API layer).
+
+Non-email data integrity violations (NOT NULL, CHECK, FK, other unique constraints) are re-thrown and handled by the global 500 handler. The response never leaks constraint names, SQL, or exception class names.
 
 ---
 
@@ -205,7 +209,15 @@ The `RegisterUserService` catches `DataIntegrityViolationException` and converts
 - **Adapter:** `NoopVerificationEmailSender` (development only, logs masked email)
 - **Timing:** AFTER_COMMIT via `@TransactionalEventListener`
 - **Failure behavior:** Log error, do NOT roll back transaction, user can resend
-- **Production adapter:** Deferred to a future task
+- **Production adapter:** Deferred to MF-BE-012
+
+### MF-BE-007A: Production Fail-Closed
+
+`NoopVerificationEmailSender` is restricted to `local` and `test` profiles via `@Profile({"local", "test"})` and `@ConditionalOnProperty(name = "milestoneflow.email.provider", havingValue = "noop")`. Both conditions must be met.
+
+In production, neither condition is satisfied. No `VerificationEmailSender` bean exists, causing `EmailVerificationEventListener` to fail dependency injection at startup → application cannot start (fail-closed).
+
+**Release Blocker:** A real `VerificationEmailSender` implementation is required before production deployment.
 
 ---
 
@@ -276,6 +288,10 @@ com.milestoneflow.identity
     ├── crypto/
     │   ├── SecureRandomTokenGenerator
     │   └── Sha256TokenHasher
+    ├── persistence/
+    │   ├── AppUserRepositoryAdapter
+    │   ├── ConstraintViolationMapper
+    │   └── ... (SpringData repositories)
     └── email/
         └── NoopVerificationEmailSender
 ```
@@ -297,6 +313,9 @@ com.milestoneflow.identity
 | `ResendVerificationEmailServiceTest` | 10+ cases: anti-enumeration, token invalidation, ACTIVE/DISABLED |
 | `ConfirmEmailVerificationServiceTest` | 14+ cases: validation, locking, state transitions, error cases |
 | `AuthRegistrationControllerTest` | 16+ cases: @WebMvcTest for all 3 endpoints, validation, error codes |
+| `ConstraintViolationMapperTest` | 7 cases: constraint classification (MF-BE-007A) |
+| `IdentityExceptionHandlerTest` | 13 cases: DIVE safety-net, response security, token/account exceptions (MF-BE-007A) |
+| `VerificationEmailSenderConfigurationTest` | 7 cases: profile bean creation, prod fail-closed, Noop security (MF-BE-007A) |
 
 ### Integration Tests (PostgreSQL 17)
 
@@ -320,8 +339,23 @@ The following are explicitly NOT part of this task:
 - Password reset
 - Rate limiting (hook deferred to MF-BE-011)
 - Audit event writing (MF-BE-011)
-- Production email delivery adapter
+- Production email delivery adapter (**Release Blocker** — see §16)
 - Database migration (no V008)
+
+---
+
+## 22. MF-BE-007A Engineering Closure
+
+MF-BE-007A resolved four engineering issues identified during pre-MF-BE-008 review.
+See [MF-BE-007A_ENGINEERING_CLOSURE.md](MF-BE-007A_ENGINEERING_CLOSURE.md) for full details.
+
+Key changes:
+1. `.claude/` added to `.gitignore` — clean work tree
+2. Expired token tests use `MutableClock` — no `Thread.sleep`
+3. `ConstraintViolationMapper` + handler safety-net — only `uk_app_user_email_normalized` → 409
+4. `NoopVerificationEmailSender` restricted to `local`/`test` — production fail-closed
+
+**Development may proceed to MF-BE-008. Production deployment is blocked until a real email sender is implemented.**
 
 ---
 
