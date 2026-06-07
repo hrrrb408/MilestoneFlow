@@ -2,9 +2,13 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **Proposed** |
+| Status | **Accepted** |
 | Date | 2026-06-07 |
 | Deciders | Backend team, Architect |
+| Decision Date | 2026-06-07 |
+| Decision Makers | System Architect |
+| Review Reference | ADR_REVIEW_REPORT.md §ADR-BE-007 |
+| Note | Not needed in B1. JPQL DTO for simple queries, native SQL for complex. jOOQ deferred to V0.2+. |
 
 ## Background
 

@@ -2,9 +2,13 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **Proposed** |
+| Status | **Accepted** |
 | Date | 2026-06-07 |
 | Deciders | Backend team, Architect |
+| Decision Date | 2026-06-07 |
+| Decision Makers | System Architect |
+| Review Reference | ADR_REVIEW_REPORT.md §ADR-BE-002 |
+| Note | UUID v7 approach accepted. Specific library choice deferred — must resolve before MF-BE-006. |
 
 ## Background
 

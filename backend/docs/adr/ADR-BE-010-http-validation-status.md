@@ -2,9 +2,13 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **Proposed** |
+| Status | **Accepted** |
 | Date | 2026-06-07 |
 | Deciders | Backend team, Architect |
+| Decision Date | 2026-06-07 |
+| Decision Makers | System Architect |
+| Review Reference | ADR_REVIEW_REPORT.md §ADR-BE-010 |
+| Note | Aligned with architecture doc §11. Duplicate email → 409 (unique constraint conflict). One error code maps to one HTTP status. |
 
 ## Background
 

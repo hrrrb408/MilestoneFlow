@@ -2,9 +2,14 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **Proposed** |
+| Status | **Accepted with changes** |
 | Date | 2026-06-07 |
 | Deciders | Backend team, Architect |
+| Decision Date | 2026-06-07 |
+| Decision Makers | System Architect |
+| Review Reference | ADR_REVIEW_REPORT.md §ADR-BE-009 |
+| Changes Required | (1) Add pagination meta: page, size, totalElements, totalPages, hasNext. (2) 204 has no body, no envelope. (3) Error response uses ApiErrorResponse directly (not wrapped in ApiResponse). (4) meta.requestId in both header and body. (5) No timestamp in success responses. |
+| Re-review Required | No |
 
 ## Background
 

@@ -2,9 +2,14 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **Proposed** |
+| Status | **Accepted with changes** |
 | Date | 2026-06-07 |
 | Deciders | Backend team, Architect |
+| Decision Date | 2026-06-07 |
+| Decision Makers | System Architect |
+| Review Reference | ADR_REVIEW_REPORT.md §ADR-BE-001 |
+| Changes Required | Add specific module list from architecture doc §02, freeze shared package rules, define ArchUnit minimum rules (6 rules), confirm domain may use JPA annotations for V0.1 |
+| Re-review Required | No |
 
 ## Background
 

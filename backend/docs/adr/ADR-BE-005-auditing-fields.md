@@ -2,9 +2,14 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **Proposed** |
+| Status | **Accepted with changes** |
 | Date | 2026-06-07 |
 | Deciders | Backend team, Architect |
+| Decision Date | 2026-06-07 |
+| Decision Makers | System Architect |
+| Review Reference | ADR_REVIEW_REPORT.md §ADR-BE-005 |
+| Changes Required | (1) Clarify JPA auditing ≠ audit_event — separate concerns. (2) System user: created_by is NULL when no authenticated user (honest, no fake users). (3) Use @MappedSuperclass. (4) Timestamp type: Instant. (5) Application Clock bean. |
+| Re-review Required | No |
 
 ## Background
 

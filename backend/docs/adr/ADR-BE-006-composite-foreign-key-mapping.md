@@ -2,9 +2,13 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **Proposed** |
+| Status | **Accepted** |
 | Date | 2026-06-07 |
 | Deciders | Backend team, Architect |
+| Decision Date | 2026-06-07 |
+| Decision Makers | System Architect |
+| Review Reference | ADR_REVIEW_REPORT.md §ADR-BE-006 |
+| Note | Critical security ADR. PK = id alone. UNIQUE(workspace_id, id) on parent tables. Composite FK on child tables. Cross-tenant and not-found both return 404. No RLS in V0.1. |
 
 ## Background
 
