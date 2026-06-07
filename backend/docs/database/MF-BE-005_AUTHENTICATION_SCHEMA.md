@@ -110,6 +110,7 @@ All tokens (access, refresh, verification) are stored as SHA-256 hex hashes (`va
 | uk_verification_token_hash | verification_token | token_hash | Yes | — |
 | idx_auth_session_user_status | auth_session | user_id, status | No | — |
 | idx_auth_session_family_status | auth_session | session_family_id, status | No | — |
+| idx_auth_session_family | auth_session | session_family_id, refresh_generation | No | — |
 | idx_verification_token_user_purpose | verification_token | user_id, purpose | No | — |
 | idx_verification_token_lookup | verification_token | token_hash, purpose | No | used_at IS NULL |
 | idx_workspace_membership_workspace_status | workspace_membership | workspace_id, status | No | — |
@@ -135,17 +136,13 @@ All PKs are `uuid` type with **no database default**. IDs are generated applicat
 
 Integration tests (Testcontainers PostgreSQL 17):
 
-| Category | Tests | Verified SQLSTATEs |
-|----------|-------|--------------------|
-| Migration history & schema | ~20 | — |
-| app_user constraints | 10 | 23502, 23505, 23514 |
-| auth_session constraints | 13 | 23502, 23503, 23505, 23514 |
-| verification_token constraints | 7 | 23502, 23503, 23505, 23514 |
-| workspace constraints | 10 | 23505, 23514 |
-| workspace_membership constraints | 12 | 23502, 23503, 23505, 23514 |
-| audit_event constraints | 10 | 23502, 23503, 23514 |
-| Index structure | 12 | — |
-| Concurrency | 2 | 23505 |
+| Test Class | Tests | Verified SQLSTATEs |
+|------------|-------|--------------------|
+| AuthenticationSchemaMigrationIT | ~25 | — |
+| IdentityConstraintsIT | ~30 | 23502, 23503, 23505, 23514 |
+| WorkspaceConstraintsIT | ~25 | 23502, 23503, 23505, 23514 |
+| AuditConstraintsIT | ~20 | 23502, 23503, 23514 |
+| AuthenticationIndexesIT | ~30 | — |
 
 ## Future Java ORM Notes
 

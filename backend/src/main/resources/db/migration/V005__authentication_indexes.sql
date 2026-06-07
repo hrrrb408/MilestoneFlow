@@ -9,6 +9,10 @@ CREATE INDEX idx_auth_session_user_status
 CREATE INDEX idx_auth_session_family_status
     ON auth_session (session_family_id, status);
 
+-- Supports family generation lookup for refresh rotation replay detection.
+CREATE INDEX idx_auth_session_family
+    ON auth_session (session_family_id, refresh_generation);
+
 -- ── verification_token ────────────────────────────────────────────────────
 CREATE INDEX idx_verification_token_user_purpose
     ON verification_token (user_id, purpose);
