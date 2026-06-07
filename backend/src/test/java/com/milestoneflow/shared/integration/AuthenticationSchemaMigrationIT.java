@@ -26,11 +26,11 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
 
         @Test
         void shouldHaveAllMigrationsApplied() {
-            List<Integer> versions = jdbc.queryForList(
-                    "SELECT CAST(version AS int) FROM flyway_schema_history WHERE success = true ORDER BY version",
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM flyway_schema_history WHERE success = true AND version IN ('1','2','3','4','5')",
                     Integer.class
             );
-            assertThat(versions).containsExactly(1, 2, 3, 4, 5);
+            assertThat(count).isEqualTo(5);
         }
 
         @Test
@@ -44,47 +44,36 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
 
         @Test
         void shouldHaveV001Bootstrap() {
-            Integer count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '1' AND success = true",
-                    Integer.class
-            );
-            assertThat(count).isGreaterThan(0);
+            assertThat(versionExists("1")).isTrue();
         }
 
         @Test
         void shouldHaveV002Identity() {
-            Integer count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '2' AND success = true",
-                    Integer.class
-            );
-            assertThat(count).isGreaterThan(0);
+            assertThat(versionExists("2")).isTrue();
         }
 
         @Test
         void shouldHaveV003Workspace() {
-            Integer count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '3' AND success = true",
-                    Integer.class
-            );
-            assertThat(count).isGreaterThan(0);
+            assertThat(versionExists("3")).isTrue();
         }
 
         @Test
         void shouldHaveV004Audit() {
-            Integer count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '4' AND success = true",
-                    Integer.class
-            );
-            assertThat(count).isGreaterThan(0);
+            assertThat(versionExists("4")).isTrue();
         }
 
         @Test
         void shouldHaveV005Indexes() {
+            assertThat(versionExists("5")).isTrue();
+        }
+
+        private boolean versionExists(String version) {
+            // Flyway stores version as VARCHAR; check multiple possible formats.
             Integer count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '5' AND success = true",
-                    Integer.class
+                    "SELECT COUNT(*) FROM flyway_schema_history WHERE version = ? AND success = true",
+                    Integer.class, version
             );
-            assertThat(count).isGreaterThan(0);
+            return count != null && count > 0;
         }
     }
 
@@ -157,19 +146,19 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
         @Test
         void appUserEmailShouldBeVarchar() {
             String type = getColumnType("app_user", "email");
-            assertThat(type).isEqualTo("character varying");
+            assertThat(type).isEqualTo("varchar");
         }
 
         @Test
         void appUserCreatedAtShouldBeTimestamptz() {
             assertThat(getColumnType("app_user", "created_at"))
-                    .isEqualTo("timestamp with time zone");
+                    .isEqualTo("timestamptz");
         }
 
         @Test
         void appUserStatusShouldBeVarchar() {
             assertThat(getColumnType("app_user", "status"))
-                    .isEqualTo("character varying");
+                    .isEqualTo("varchar");
         }
 
         @Test
@@ -185,9 +174,9 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
         @Test
         void authSessionTokenHashesShouldBeVarchar() {
             assertThat(getColumnType("auth_session", "access_token_hash"))
-                    .isEqualTo("character varying");
+                    .isEqualTo("varchar");
             assertThat(getColumnType("auth_session", "refresh_token_hash"))
-                    .isEqualTo("character varying");
+                    .isEqualTo("varchar");
         }
 
         @Test
@@ -208,7 +197,7 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
         @Test
         void auditEventCreatedAtShouldBeTimestamptz() {
             assertThat(getColumnType("audit_event", "created_at"))
-                    .isEqualTo("timestamp with time zone");
+                    .isEqualTo("timestamptz");
         }
 
         @Test

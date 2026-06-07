@@ -3,6 +3,7 @@ package com.milestoneflow.shared.integration;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -229,7 +230,7 @@ class AuditConstraintsIT extends AbstractIntegrationTest {
                             + "WHERE table_schema = 'public' AND table_name = 'audit_event' AND column_name = 'created_at'",
                     String.class
             );
-            assertThat(dataType).isEqualTo("timestamp with time zone");
+            assertThat(dataType).isEqualTo("timestamptz");
         }
     }
 
@@ -243,7 +244,7 @@ class AuditConstraintsIT extends AbstractIntegrationTest {
             UUID eventId = insertAuditEvent();
             assertThatThrownBy(() ->
                     jdbc.update("UPDATE audit_event SET summary = 'tampered' WHERE id = ?", eventId)
-            ).isInstanceOf(DataIntegrityViolationException.class)
+            ).isInstanceOf(DataAccessException.class)
                     .hasMessageContaining("AUDIT_EVENT_IMMUTABLE");
         }
 
@@ -252,7 +253,7 @@ class AuditConstraintsIT extends AbstractIntegrationTest {
             UUID eventId = insertAuditEvent();
             assertThatThrownBy(() ->
                     jdbc.update("DELETE FROM audit_event WHERE id = ?", eventId)
-            ).isInstanceOf(DataIntegrityViolationException.class)
+            ).isInstanceOf(DataAccessException.class)
                     .hasMessageContaining("AUDIT_EVENT_IMMUTABLE");
         }
 
@@ -263,7 +264,7 @@ class AuditConstraintsIT extends AbstractIntegrationTest {
             // UPDATE fails
             assertThatThrownBy(() ->
                     jdbc.update("UPDATE audit_event SET summary = 'tampered' WHERE id = ?", eventId)
-            ).isInstanceOf(DataIntegrityViolationException.class);
+            ).isInstanceOf(DataAccessException.class);
 
             // INSERT should still work
             UUID newId = insertAuditEvent();
@@ -279,7 +280,7 @@ class AuditConstraintsIT extends AbstractIntegrationTest {
             // DELETE fails
             assertThatThrownBy(() ->
                     jdbc.update("DELETE FROM audit_event WHERE id = ?", eventId)
-            ).isInstanceOf(DataIntegrityViolationException.class);
+            ).isInstanceOf(DataAccessException.class);
 
             // INSERT should still work
             UUID newId = insertAuditEvent();

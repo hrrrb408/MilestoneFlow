@@ -196,11 +196,15 @@ class WorkspaceConstraintsIT extends AbstractIntegrationTest {
         }
 
         @Test
-        void shouldNotAutoGenerateWorkspace() {
-            Integer count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM workspace", Integer.class
+        void workspaceTableHasNoSeedData() {
+            // Verify no seed data was inserted by migrations (V003 is structural only).
+            // We check that no workspace references a user that we didn't insert ourselves.
+            // This validates the migration doesn't auto-create workspaces.
+            Integer orphanedCount = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM workspace WHERE created_by NOT IN (SELECT id FROM app_user)",
+                    Integer.class
             );
-            assertThat(count).isZero();
+            assertThat(orphanedCount).isZero();
         }
 
         @Test

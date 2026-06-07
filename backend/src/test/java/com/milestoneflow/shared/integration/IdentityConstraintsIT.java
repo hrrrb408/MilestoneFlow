@@ -94,21 +94,34 @@ class IdentityConstraintsIT extends AbstractIntegrationTest {
 
     @Test
     void shouldRejectDifferentDisplayEmailSameNormalized() {
-        insertUser("user@Example.COM");
+        // Application normalizes email before insert; database enforces uniqueness on email_normalized.
+        // Simulate: same normalized email inserted twice with different display emails.
+        jdbc.update(
+                "INSERT INTO app_user (id, email, email_normalized, display_name, password_hash, status) "
+                        + "VALUES (?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(), "User@Example.COM", "user@example.com",
+                "User 1", "hash", "ACTIVE"
+        );
         assertThatThrownBy(() ->
                 jdbc.update(
                         "INSERT INTO app_user (id, email, email_normalized, display_name, password_hash, status) "
                                 + "VALUES (?, ?, ?, ?, ?, ?)",
-                        UUID.randomUUID(), "User@Example.COM", "user@example.com",
-                        "Other User", "hash", "ACTIVE"
+                        UUID.randomUUID(), "user@example.com", "user@example.com",
+                        "User 2", "hash", "ACTIVE"
                 )
         ).isInstanceOf(DuplicateKeyException.class);
     }
 
     @Test
     void shouldRejectInvalidStatus() {
-        assertThatThrownBy(() -> insertUser("bad-status@example.com"))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() ->
+                jdbc.update(
+                        "INSERT INTO app_user (id, email, email_normalized, display_name, password_hash, status) "
+                                + "VALUES (?, ?, ?, ?, ?, ?)",
+                        UUID.randomUUID(), "bad-status@example.com", "bad-status@example.com",
+                        "User", "hash", "INVALID_STATUS"
+                )
+        ).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
