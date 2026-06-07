@@ -2,6 +2,7 @@ package com.milestoneflow.shared.integration;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -482,7 +483,13 @@ class WorkspaceAndAuditConstraintsIT extends AbstractIntegrationTest {
                 jdbc.update(
                         "UPDATE audit_event SET summary = 'Modified' WHERE id = ?", eventId
                 )
-        ).hasRootCauseMessage("AUDIT_EVENT_IMMUTABLE");
+        ).isInstanceOf(DataAccessException.class);
+
+        // Verify data was NOT modified
+        String summary = jdbc.queryForObject(
+                "SELECT summary FROM audit_event WHERE id = ?", String.class, eventId
+        );
+        assertThat(summary).isEqualTo("Original");
     }
 
     @Test
@@ -496,7 +503,13 @@ class WorkspaceAndAuditConstraintsIT extends AbstractIntegrationTest {
 
         assertThatThrownBy(() ->
                 jdbc.update("DELETE FROM audit_event WHERE id = ?", eventId)
-        ).hasRootCauseMessage("AUDIT_EVENT_IMMUTABLE");
+        ).isInstanceOf(DataAccessException.class);
+
+        // Verify row still exists
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit_event WHERE id = ?", Integer.class, eventId
+        );
+        assertThat(count).isEqualTo(1);
     }
 
     @Test
