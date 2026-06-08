@@ -6,9 +6,13 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Identity module configuration.
  *
- * <p>Enables configuration properties for email verification.
+ * <p>Enables configuration properties for email verification, auth tokens, and cookies.
  */
 @Configuration
-@EnableConfigurationProperties(EmailVerificationProperties.class)
+@EnableConfigurationProperties({
+        EmailVerificationProperties.class,
+        AuthTokenProperties.class,
+        AuthCookieProperties.class
+})
 public class IdentityConfiguration {
 }

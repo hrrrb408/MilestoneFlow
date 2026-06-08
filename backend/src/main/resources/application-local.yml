@@ -39,3 +39,6 @@ logging:
 milestoneflow:
   email:
     provider: noop
+  auth:
+    cookies:
+      secure: false

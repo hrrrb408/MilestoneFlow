@@ -2,6 +2,8 @@ package com.milestoneflow.identity.api;
 
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
+import com.milestoneflow.identity.domain.exception.EmailNotVerifiedException;
+import com.milestoneflow.identity.domain.exception.InvalidCredentialsException;
 import com.milestoneflow.identity.domain.exception.VerificationTokenInvalidException;
 import com.milestoneflow.identity.domain.policy.PasswordPolicyViolation;
 import com.milestoneflow.shared.api.ApiErrorResponse;
@@ -78,7 +80,45 @@ public class IdentityExceptionHandler extends GlobalExceptionHandler {
     }
 
     /**
-     * Handles attempts to verify email for a disabled account.
+     * Handles login with wrong email or wrong password.
+     * Returns 401 AUTH_INVALID_CREDENTIALS.
+     *
+     * <p>Same response for both cases to prevent account enumeration.
+     * Per B1 Baseline §10 and §15.
+     */
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(
+            InvalidCredentialsException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_INVALID_CREDENTIALS",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles login attempt by a user whose email has not been verified.
+     * Returns 403 AUTH_EMAIL_NOT_VERIFIED per B1 Baseline §15.
+     */
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<ApiErrorResponse> handleEmailNotVerified(
+            EmailNotVerifiedException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.FORBIDDEN,
+                "AUTH_EMAIL_NOT_VERIFIED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles attempts to verify email for a disabled account,
+     * or login by a disabled user.
      * Returns 401 AUTH_ACCOUNT_DISABLED per B1 Baseline §15.
      */
     @ExceptionHandler(AccountDisabledException.class)
