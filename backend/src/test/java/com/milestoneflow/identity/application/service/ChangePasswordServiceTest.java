@@ -2,6 +2,7 @@ package com.milestoneflow.identity.application.service;
 
 import com.milestoneflow.identity.application.command.ChangePasswordCommand;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.InvalidCredentialsException;
@@ -44,6 +45,7 @@ class ChangePasswordServiceTest {
     @Mock private AuthSessionRepository authSessionRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private Clock clock;
+    @Mock private AuthAuditWriter auditWriter;
 
     @Captor private ArgumentCaptor<AppUser> userCaptor;
 
@@ -58,7 +60,7 @@ class ChangePasswordServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ChangePasswordService(userRepository, authSessionRepository, passwordEncoder, clock);
+        service = new ChangePasswordService(userRepository, authSessionRepository, passwordEncoder, clock, auditWriter);
         when(clock.instant()).thenReturn(NOW);
     }
 

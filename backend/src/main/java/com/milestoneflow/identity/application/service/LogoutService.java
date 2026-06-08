@@ -2,12 +2,14 @@ package com.milestoneflow.identity.application.service;
 
 import com.milestoneflow.identity.application.port.in.LogoutUseCase;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.domain.exception.AuthSessionRevokedException;
 import com.milestoneflow.identity.domain.model.AuthSession;
 import com.milestoneflow.identity.domain.type.AuthSessionRevokeReason;
 import com.milestoneflow.identity.domain.type.AuthSessionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,10 +33,12 @@ public class LogoutService implements LogoutUseCase {
 
     private final AuthSessionRepository authSessionRepository;
     private final Clock clock;
+    private final AuthAuditWriter auditWriter;
 
-    public LogoutService(AuthSessionRepository authSessionRepository, Clock clock) {
+    public LogoutService(AuthSessionRepository authSessionRepository, Clock clock, AuthAuditWriter auditWriter) {
         this.authSessionRepository = authSessionRepository;
         this.clock = clock;
+        this.auditWriter = auditWriter;
     }
 
     @Override
@@ -59,6 +63,8 @@ public class LogoutService implements LogoutUseCase {
         authSessionRepository.save(session);
 
         log.info("Logout succeeded: sessionId={}", sessionId);
+
+        auditWriter.writeUserEvent("AUTH_LOGOUT_SUCCEEDED", session.getUserId(), "auth_session", sessionId, MDC.get("requestId"), "User logged out", null);
     }
 
     @Override
@@ -68,5 +74,7 @@ public class LogoutService implements LogoutUseCase {
         authSessionRepository.revokeAllByUserId(userId, now, AuthSessionRevokeReason.LOGOUT_ALL);
 
         log.info("Logout-all succeeded: userId={}", userId);
+
+        auditWriter.writeUserEvent("AUTH_LOGOUT_ALL_SUCCEEDED", userId, "app_user", userId, MDC.get("requestId"), "Logged out all sessions", null);
     }
 }

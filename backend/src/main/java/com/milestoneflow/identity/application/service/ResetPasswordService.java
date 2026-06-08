@@ -3,6 +3,7 @@ package com.milestoneflow.identity.application.service;
 import com.milestoneflow.identity.application.command.ResetPasswordCommand;
 import com.milestoneflow.identity.application.port.in.ResetPasswordUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
@@ -17,6 +18,7 @@ import com.milestoneflow.identity.domain.type.UserStatus;
 import com.milestoneflow.identity.domain.type.VerificationTokenPurpose;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,19 +57,22 @@ public class ResetPasswordService implements ResetPasswordUseCase {
     private final PasswordEncoder passwordEncoder;
     private final TokenHasher tokenHasher;
     private final Clock clock;
+    private final AuthAuditWriter auditWriter;
 
     public ResetPasswordService(VerificationTokenRepository verificationTokenRepository,
                                 AppUserRepository userRepository,
                                 AuthSessionRepository authSessionRepository,
                                 PasswordEncoder passwordEncoder,
                                 TokenHasher tokenHasher,
-                                Clock clock) {
+                                Clock clock,
+                                AuthAuditWriter auditWriter) {
         this.verificationTokenRepository = verificationTokenRepository;
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenHasher = tokenHasher;
         this.clock = clock;
+        this.auditWriter = auditWriter;
     }
 
     @Override
@@ -132,5 +137,7 @@ public class ResetPasswordService implements ResetPasswordUseCase {
         authSessionRepository.revokeAllByUserId(user.getId(), now, AuthSessionRevokeReason.PASSWORD_RESET);
 
         log.info("Password reset succeeded: userId={}", user.getId());
+
+        auditWriter.writeUserEvent("AUTH_PASSWORD_RESET_SUCCEEDED", user.getId(), "app_user", user.getId(), MDC.get("requestId"), "Password reset completed", null);
     }
 }

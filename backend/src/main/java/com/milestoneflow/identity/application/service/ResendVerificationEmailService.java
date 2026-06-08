@@ -4,6 +4,7 @@ import com.milestoneflow.identity.application.command.ResendVerificationEmailCom
 import com.milestoneflow.identity.application.event.EmailVerificationRequestedEvent;
 import com.milestoneflow.identity.application.port.in.ResendVerificationEmailUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
@@ -16,6 +17,7 @@ import com.milestoneflow.identity.infrastructure.config.EmailVerificationPropert
 import com.milestoneflow.shared.id.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +52,7 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
     private final Clock clock;
     private final EmailVerificationProperties properties;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuthAuditWriter auditWriter;
 
     public ResendVerificationEmailService(AppUserRepository userRepository,
                                           VerificationTokenRepository tokenRepository,
@@ -58,7 +61,8 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
                                           IdGenerator idGenerator,
                                           Clock clock,
                                           EmailVerificationProperties properties,
-                                          ApplicationEventPublisher eventPublisher) {
+                                          ApplicationEventPublisher eventPublisher,
+                                          AuthAuditWriter auditWriter) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.tokenGenerator = tokenGenerator;
@@ -67,6 +71,7 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
         this.clock = clock;
         this.properties = properties;
         this.eventPublisher = eventPublisher;
+        this.auditWriter = auditWriter;
     }
 
     @Override
@@ -81,6 +86,7 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
         if (userOpt.isEmpty()) {
             // Unknown email — return silently (anti-enumeration)
             log.debug("Resend requested for unknown email");
+            auditWriter.writeSystemEvent("AUTH_EMAIL_VERIFICATION_RESEND_REQUESTED", "app_user", null, MDC.get("requestId"), "Resend requested for unknown email", null);
             return;
         }
 
@@ -90,6 +96,7 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
         if (user.getStatus() != UserStatus.PENDING_VERIFICATION) {
             // ACTIVE or DISABLED — return silently (anti-enumeration)
             log.debug("Resend skipped for user userId={} status={}", user.getId(), user.getStatus());
+            auditWriter.writeUserEvent("AUTH_EMAIL_VERIFICATION_RESEND_REQUESTED", user.getId(), "app_user", user.getId(), MDC.get("requestId"), "Resend skipped: user not eligible", null);
             return;
         }
 
@@ -111,6 +118,8 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
         );
 
         tokenRepository.save(newToken);
+
+        auditWriter.writeUserEvent("AUTH_EMAIL_VERIFICATION_RESEND_REQUESTED", user.getId(), "app_user", user.getId(), MDC.get("requestId"), "Verification email resent", null);
 
         // Publish event for AFTER_COMMIT email delivery
         eventPublisher.publishEvent(new EmailVerificationRequestedEvent(

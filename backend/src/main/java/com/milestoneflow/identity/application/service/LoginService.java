@@ -3,6 +3,7 @@ package com.milestoneflow.identity.application.service;
 import com.milestoneflow.identity.application.command.LoginCommand;
 import com.milestoneflow.identity.application.port.in.LoginUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
@@ -18,6 +19,7 @@ import com.milestoneflow.identity.infrastructure.config.AuthTokenProperties;
 import com.milestoneflow.shared.id.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +57,7 @@ public class LoginService implements LoginUseCase {
     private final IdGenerator idGenerator;
     private final Clock clock;
     private final AuthTokenProperties tokenProperties;
+    private final AuthAuditWriter auditWriter;
 
     public LoginService(AppUserRepository userRepository,
                         AuthSessionRepository authSessionRepository,
@@ -63,7 +66,8 @@ public class LoginService implements LoginUseCase {
                         TokenHasher tokenHasher,
                         IdGenerator idGenerator,
                         Clock clock,
-                        AuthTokenProperties tokenProperties) {
+                        AuthTokenProperties tokenProperties,
+                        AuthAuditWriter auditWriter) {
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
         this.passwordEncoder = passwordEncoder;
@@ -72,6 +76,7 @@ public class LoginService implements LoginUseCase {
         this.idGenerator = idGenerator;
         this.clock = clock;
         this.tokenProperties = tokenProperties;
+        this.auditWriter = auditWriter;
     }
 
     @Override
@@ -86,6 +91,9 @@ public class LoginService implements LoginUseCase {
         // 3. User not found → same error as wrong password (anti-enumeration)
         if (userOpt.isEmpty()) {
             log.info("Login failed: user not found for email");
+            auditWriter.writeSystemEvent("AUTH_LOGIN_FAILED", "app_user", null,
+                    MDC.get("requestId"), "Login failed: user not found",
+                    java.util.Map.of("reasonCode", "user_not_found"));
             throw new InvalidCredentialsException();
         }
 
@@ -94,16 +102,28 @@ public class LoginService implements LoginUseCase {
         // 4. Validate password
         if (!passwordEncoder.matches(command.getPassword(), user.getPasswordHash())) {
             log.info("Login failed: invalid credentials userId={}", user.getId());
+            auditWriter.writeUserEvent("AUTH_LOGIN_FAILED", user.getId(),
+                    "app_user", user.getId(), MDC.get("requestId"),
+                    "Login failed: invalid credentials",
+                    java.util.Map.of("reasonCode", "invalid_credentials"));
             throw new InvalidCredentialsException();
         }
 
         // 5. Check user status
         if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
             log.info("Login failed: email not verified userId={}", user.getId());
+            auditWriter.writeUserEvent("AUTH_LOGIN_FAILED", user.getId(),
+                    "app_user", user.getId(), MDC.get("requestId"),
+                    "Login failed: email not verified",
+                    java.util.Map.of("reasonCode", "email_not_verified"));
             throw new EmailNotVerifiedException();
         }
         if (user.getStatus() == UserStatus.DISABLED) {
             log.info("Login failed: account disabled userId={}", user.getId());
+            auditWriter.writeUserEvent("AUTH_LOGIN_FAILED", user.getId(),
+                    "app_user", user.getId(), MDC.get("requestId"),
+                    "Login failed: account disabled",
+                    java.util.Map.of("reasonCode", "account_disabled"));
             throw new AccountDisabledException();
         }
 
@@ -143,6 +163,10 @@ public class LoginService implements LoginUseCase {
         authSessionRepository.save(session);
 
         log.info("Login succeeded userId={}", user.getId());
+
+        auditWriter.writeUserEvent("AUTH_LOGIN_SUCCEEDED", user.getId(),
+                "auth_session", sessionId, MDC.get("requestId"),
+                "User logged in", null);
 
         return new LoginResult(
                 user.getId(),

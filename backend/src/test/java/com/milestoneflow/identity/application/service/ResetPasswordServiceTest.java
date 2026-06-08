@@ -2,6 +2,7 @@ package com.milestoneflow.identity.application.service;
 
 import com.milestoneflow.identity.application.command.ResetPasswordCommand;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
@@ -49,6 +50,7 @@ class ResetPasswordServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private TokenHasher tokenHasher;
     @Mock private Clock clock;
+    @Mock private AuthAuditWriter auditWriter;
 
     @Captor private ArgumentCaptor<AppUser> userCaptor;
     @Captor private ArgumentCaptor<VerificationToken> tokenCaptor;
@@ -67,7 +69,7 @@ class ResetPasswordServiceTest {
     @BeforeEach
     void setUp() {
         service = new ResetPasswordService(verificationTokenRepository, userRepository,
-                authSessionRepository, passwordEncoder, tokenHasher, clock);
+                authSessionRepository, passwordEncoder, tokenHasher, clock, auditWriter);
         when(clock.instant()).thenReturn(NOW);
     }
 

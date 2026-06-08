@@ -1,5 +1,6 @@
 package com.milestoneflow.identity.application.service;
 
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.domain.exception.AuthSessionRevokedException;
 import com.milestoneflow.identity.domain.model.AuthSession;
@@ -34,6 +35,7 @@ class LogoutServiceTest {
 
     @Mock private AuthSessionRepository authSessionRepository;
     @Mock private Clock clock;
+    @Mock private AuthAuditWriter auditWriter;
 
     @Captor private ArgumentCaptor<AuthSession> sessionCaptor;
 
@@ -46,7 +48,7 @@ class LogoutServiceTest {
 
     @BeforeEach
     void setUp() {
-        logoutService = new LogoutService(authSessionRepository, clock);
+        logoutService = new LogoutService(authSessionRepository, clock, auditWriter);
         when(clock.instant()).thenReturn(NOW);
     }
 
