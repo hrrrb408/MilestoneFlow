@@ -54,7 +54,10 @@ class PasswordResetConcurrencyIT extends AbstractIntegrationTest {
     void setUp() {
         jdbc.update("DELETE FROM auth_session WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", EMAIL.toLowerCase());
         jdbc.update("DELETE FROM verification_token WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", EMAIL.toLowerCase());
+        jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");
+        jdbc.update("DELETE FROM audit_event WHERE actor_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", EMAIL.toLowerCase());
         jdbc.update("DELETE FROM app_user WHERE email_normalized = ?", EMAIL.toLowerCase());
+        jdbc.update("ALTER TABLE audit_event ENABLE TRIGGER ALL");
 
         String encodedPassword = passwordEncoder.encode(PASSWORD);
         jdbc.update("""
