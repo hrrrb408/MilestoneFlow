@@ -195,9 +195,10 @@ class AuthSecurityHardeningIT extends AbstractIntegrationTest {
         @Test
         void loginFailureForUnknownEmailShouldMatchKnownEmailResponse() {
             // Both should return 401 AUTH_INVALID_CREDENTIALS
+            String unknownEmail = "does-not-exist-" + UUID.randomUUID().toString().substring(0, 8) + "@example.com";
             String unknownBody = """
-                    {"email":"does-not-exist-" + UUID.randomUUID() + "@example.com","password":"wrong"}
-                    """;
+                    {"email":"%s","password":"wrong"}
+                    """.formatted(unknownEmail);
             ResponseEntity<String> unknownResp = restTemplate.exchange("/auth/login",
                     HttpMethod.POST, new HttpEntity<>(unknownBody, jsonHeaders()), String.class);
 
