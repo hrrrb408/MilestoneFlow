@@ -99,7 +99,7 @@ class ForgotPasswordFlowIT extends AbstractIntegrationTest {
             // Insert an EMAIL_VERIFICATION token manually
             jdbc.update("""
                 INSERT INTO verification_token (id, user_id, purpose, token_hash, expires_at, created_at)
-                VALUES (gen_random_uuid(), ?::uuid, 'EMAIL_VERIFICATION', encode(gen_random_bytes(32), 'hex'), now() + interval '24 hours', now())
+                VALUES (gen_random_uuid(), ?::uuid, 'EMAIL_VERIFICATION', md5(random()::text || clock_timestamp()::text) || md5(random()::text), now() + interval '24 hours', now())
                 """, userId);
 
             Integer emailTokenCountBefore = jdbc.queryForObject(
