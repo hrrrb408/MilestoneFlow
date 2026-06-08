@@ -25,9 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Application service for refresh token rotation.
@@ -54,6 +52,7 @@ public class RefreshTokenService implements RefreshTokenUseCase {
 
     private final AuthSessionRepository authSessionRepository;
     private final AppUserRepository appUserRepository;
+    private final AuthSessionFamilyRevocationService familyRevocationService;
     private final SecureTokenGenerator tokenGenerator;
     private final TokenHasher tokenHasher;
     private final IdGenerator idGenerator;
@@ -62,6 +61,7 @@ public class RefreshTokenService implements RefreshTokenUseCase {
 
     public RefreshTokenService(AuthSessionRepository authSessionRepository,
                                AppUserRepository appUserRepository,
+                               AuthSessionFamilyRevocationService familyRevocationService,
                                SecureTokenGenerator tokenGenerator,
                                TokenHasher tokenHasher,
                                IdGenerator idGenerator,
@@ -69,6 +69,7 @@ public class RefreshTokenService implements RefreshTokenUseCase {
                                AuthTokenProperties tokenProperties) {
         this.authSessionRepository = authSessionRepository;
         this.appUserRepository = appUserRepository;
+        this.familyRevocationService = familyRevocationService;
         this.tokenGenerator = tokenGenerator;
         this.tokenHasher = tokenHasher;
         this.idGenerator = idGenerator;
@@ -97,7 +98,7 @@ public class RefreshTokenService implements RefreshTokenUseCase {
         // 3. Check for replay: session was already rotated
         if (session.isRefreshRotated()) {
             log.warn("Refresh replay detected: sessionFamilyId={}", session.getSessionFamilyId());
-            revokeEntireFamily(session.getSessionFamilyId(), now);
+            familyRevocationService.revokeEntireFamily(session.getSessionFamilyId(), now);
             throw new RefreshTokenReusedException();
         }
 
@@ -161,21 +162,5 @@ public class RefreshTokenService implements RefreshTokenUseCase {
                 user.getId(), session.getSessionFamilyId(), newSession.getRefreshGeneration());
 
         return new RefreshTokenResult(rawAccessToken, rawRefreshToken);
-    }
-
-    /**
-     * Revokes all ACTIVE sessions in the family after replay detection.
-     */
-    private void revokeEntireFamily(UUID sessionFamilyId, Instant now) {
-        List<AuthSession> activeSessions =
-                authSessionRepository.findActiveBySessionFamilyId(sessionFamilyId);
-
-        for (AuthSession s : activeSessions) {
-            s.revokeAsReplayDetected(now);
-            authSessionRepository.save(s);
-        }
-
-        log.warn("Revoked {} sessions in family {} due to replay detection",
-                activeSessions.size(), sessionFamilyId);
     }
 }

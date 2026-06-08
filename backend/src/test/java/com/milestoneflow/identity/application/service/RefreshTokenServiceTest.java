@@ -29,7 +29,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,6 +48,7 @@ class RefreshTokenServiceTest {
 
     @Mock private AuthSessionRepository authSessionRepository;
     @Mock private AppUserRepository appUserRepository;
+    @Mock private AuthSessionFamilyRevocationService familyRevocationService;
     @Mock private SecureTokenGenerator tokenGenerator;
     @Mock private TokenHasher tokenHasher;
     @Mock private IdGenerator idGenerator;
@@ -72,8 +72,8 @@ class RefreshTokenServiceTest {
     void setUp() {
         var tokenProperties = new AuthTokenProperties(Duration.ofMinutes(15), Duration.ofDays(30));
         refreshTokenService = new RefreshTokenService(
-                authSessionRepository, appUserRepository, tokenGenerator, tokenHasher,
-                idGenerator, clock, tokenProperties);
+                authSessionRepository, appUserRepository, familyRevocationService,
+                tokenGenerator, tokenHasher, idGenerator, clock, tokenProperties);
     }
 
     private AppUser createActiveUser() {
@@ -376,7 +376,7 @@ class RefreshTokenServiceTest {
                     new RefreshTokenCommand("revoked-token")))
                     .isInstanceOf(AuthSessionRevokedException.class);
 
-            verify(authSessionRepository, never()).findActiveBySessionFamilyId(any());
+            verify(familyRevocationService, never()).revokeEntireFamily(any(), any());
         }
     }
 
@@ -402,34 +402,22 @@ class RefreshTokenServiceTest {
         }
 
         @Test
-        @DisplayName("revokes entire session family on replay")
-        void revokesEntireFamily() {
+        @DisplayName("delegates family revocation to dedicated service")
+        void delegatesFamilyRevocation() {
             var rotatedSession = createActiveSession();
             rotatedSession.revokeAsRotated(NOW);
-
-            // Simulate: family has an ACTIVE session (the new one from a previous refresh)
-            var activeSession = AuthSession.create(NEW_SESSION_ID, USER_ID,
-                    "e".repeat(64), "f".repeat(64), FAMILY_ID, 1,
-                    NOW.plus(Duration.ofMinutes(15)), NOW.plus(Duration.ofDays(30)),
-                    null, null);
 
             when(tokenHasher.hash("old-rotated-token")).thenReturn(OLD_REFRESH_HASH);
             when(authSessionRepository.findByRefreshTokenHashForUpdate(OLD_REFRESH_HASH))
                     .thenReturn(Optional.of(rotatedSession));
-            when(authSessionRepository.findActiveBySessionFamilyId(FAMILY_ID))
-                    .thenReturn(List.of(activeSession));
-            when(authSessionRepository.save(any(AuthSession.class))).thenAnswer(inv -> inv.getArgument(0));
             when(clock.instant()).thenReturn(NOW);
 
             assertThatThrownBy(() -> refreshTokenService.refresh(
                     new RefreshTokenCommand("old-rotated-token")))
                     .isInstanceOf(RefreshTokenReusedException.class);
 
-            // Verify family was queried and active session was revoked
-            verify(authSessionRepository).findActiveBySessionFamilyId(FAMILY_ID);
-            verify(authSessionRepository).save(activeSession);
-            assertThat(activeSession.getStatus()).isEqualTo(AuthSessionStatus.REVOKED);
-            assertThat(activeSession.getRevokeReason()).isEqualTo("REFRESH_REPLAY_DETECTED");
+            // Verify family revocation service was called (runs in REQUIRES_NEW TX)
+            verify(familyRevocationService).revokeEntireFamily(FAMILY_ID, NOW);
         }
 
         @Test
@@ -440,8 +428,6 @@ class RefreshTokenServiceTest {
             when(tokenHasher.hash("old-rotated-token")).thenReturn(OLD_REFRESH_HASH);
             when(authSessionRepository.findByRefreshTokenHashForUpdate(OLD_REFRESH_HASH))
                     .thenReturn(Optional.of(session));
-            when(authSessionRepository.findActiveBySessionFamilyId(FAMILY_ID))
-                    .thenReturn(List.of());
             when(clock.instant()).thenReturn(NOW);
 
             assertThatThrownBy(() -> refreshTokenService.refresh(
@@ -459,8 +445,6 @@ class RefreshTokenServiceTest {
             when(tokenHasher.hash("old-rotated-token")).thenReturn(OLD_REFRESH_HASH);
             when(authSessionRepository.findByRefreshTokenHashForUpdate(OLD_REFRESH_HASH))
                     .thenReturn(Optional.of(session));
-            when(authSessionRepository.findActiveBySessionFamilyId(FAMILY_ID))
-                    .thenReturn(List.of());
             when(clock.instant()).thenReturn(NOW);
 
             assertThatThrownBy(() -> refreshTokenService.refresh(

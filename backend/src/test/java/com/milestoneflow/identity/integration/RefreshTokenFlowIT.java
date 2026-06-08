@@ -188,11 +188,16 @@ class RefreshTokenFlowIT extends AbstractIntegrationTest {
             restTemplate.exchange("/auth/refresh", HttpMethod.POST,
                     new HttpEntity<>(cookies), Map.class);
 
-            Map<String, Object> newSession = jdbc.queryForMap(
-                    "SELECT * FROM auth_session WHERE user_id = ?::uuid AND status = 'ACTIVE'",
-                    userId);
-            assertThat(newSession.get("session_family_id")).isEqualTo(oldFamilyId);
-            assertThat(newSession.get("status")).isEqualTo("ACTIVE");
+            // Use ::text cast so both sides are String (queryForMap returns UUID object)
+            String newFamilyId = jdbc.queryForObject(
+                    "SELECT session_family_id::text FROM auth_session WHERE user_id = ?::uuid AND status = 'ACTIVE'",
+                    String.class, userId);
+            assertThat(newFamilyId).isEqualTo(oldFamilyId);
+
+            String newStatus = jdbc.queryForObject(
+                    "SELECT status FROM auth_session WHERE user_id = ?::uuid AND status = 'ACTIVE'",
+                    String.class, userId);
+            assertThat(newStatus).isEqualTo("ACTIVE");
         }
 
         @Test
@@ -284,9 +289,12 @@ class RefreshTokenFlowIT extends AbstractIntegrationTest {
         void expiredRefreshToken() {
             var loginResponse = doLogin();
 
-            // Get session and update refresh_expires_at to the past
+            // Expire both access and refresh tokens while preserving the
+            // ck_auth_session_refresh_after_access constraint (refresh >= access).
             jdbc.update("""
-                UPDATE auth_session SET refresh_expires_at = now() - INTERVAL '1 day'
+                UPDATE auth_session SET
+                    access_expires_at = now() - INTERVAL '2 days',
+                    refresh_expires_at = now() - INTERVAL '1 day'
                 WHERE user_id = ?::uuid AND status = 'ACTIVE'
                 """, userId);
 
