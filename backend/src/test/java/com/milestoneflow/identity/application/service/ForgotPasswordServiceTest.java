@@ -3,6 +3,7 @@ package com.milestoneflow.identity.application.service;
 import com.milestoneflow.identity.application.command.ForgotPasswordCommand;
 import com.milestoneflow.identity.application.event.PasswordResetRequestedEvent;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
@@ -52,6 +53,7 @@ class ForgotPasswordServiceTest {
     @Mock private IdGenerator idGenerator;
     @Mock private Clock clock;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private AuthAuditWriter auditWriter;
 
     @Captor private ArgumentCaptor<VerificationToken> tokenCaptor;
     @Captor private ArgumentCaptor<PasswordResetRequestedEvent> eventCaptor;
@@ -70,7 +72,7 @@ class ForgotPasswordServiceTest {
     void setUp() {
         PasswordResetProperties properties = new PasswordResetProperties(Duration.ofHours(1));
         service = new ForgotPasswordService(userRepository, verificationTokenRepository,
-                tokenGenerator, tokenHasher, idGenerator, clock, properties, eventPublisher);
+                tokenGenerator, tokenHasher, idGenerator, clock, properties, eventPublisher, auditWriter);
         when(clock.instant()).thenReturn(NOW);
     }
 

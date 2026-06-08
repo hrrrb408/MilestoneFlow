@@ -3,6 +3,7 @@ package com.milestoneflow.identity.application.service;
 import com.milestoneflow.identity.application.command.RefreshTokenCommand;
 import com.milestoneflow.identity.application.port.in.RefreshTokenUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
@@ -20,6 +21,7 @@ import com.milestoneflow.identity.infrastructure.config.AuthTokenProperties;
 import com.milestoneflow.shared.id.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +60,7 @@ public class RefreshTokenService implements RefreshTokenUseCase {
     private final IdGenerator idGenerator;
     private final Clock clock;
     private final AuthTokenProperties tokenProperties;
+    private final AuthAuditWriter auditWriter;
 
     public RefreshTokenService(AuthSessionRepository authSessionRepository,
                                AppUserRepository appUserRepository,
@@ -66,7 +69,8 @@ public class RefreshTokenService implements RefreshTokenUseCase {
                                TokenHasher tokenHasher,
                                IdGenerator idGenerator,
                                Clock clock,
-                               AuthTokenProperties tokenProperties) {
+                               AuthTokenProperties tokenProperties,
+                               AuthAuditWriter auditWriter) {
         this.authSessionRepository = authSessionRepository;
         this.appUserRepository = appUserRepository;
         this.familyRevocationService = familyRevocationService;
@@ -75,6 +79,7 @@ public class RefreshTokenService implements RefreshTokenUseCase {
         this.idGenerator = idGenerator;
         this.clock = clock;
         this.tokenProperties = tokenProperties;
+        this.auditWriter = auditWriter;
     }
 
     @Override
@@ -89,6 +94,7 @@ public class RefreshTokenService implements RefreshTokenUseCase {
 
         if (sessionOpt.isEmpty()) {
             log.debug("Refresh failed: session not found for token hash");
+            auditWriter.writeSystemEvent("AUTH_REFRESH_FAILED", "auth_session", null, MDC.get("requestId"), "Refresh failed: session not found", java.util.Map.of("reasonCode", "session_not_found"));
             throw new RefreshTokenInvalidException();
         }
 
@@ -98,6 +104,7 @@ public class RefreshTokenService implements RefreshTokenUseCase {
         // 3. Check for replay: session was already rotated
         if (session.isRefreshRotated()) {
             log.warn("Refresh replay detected: sessionFamilyId={}", session.getSessionFamilyId());
+            auditWriter.writeUserEvent("AUTH_REFRESH_REPLAY_DETECTED", session.getUserId(), "auth_session", session.getSessionFamilyId(), MDC.get("requestId"), "Refresh replay detected — family revoked", java.util.Map.of("reasonCode", "replay_detected", "sessionFamilyId", session.getSessionFamilyId().toString()));
             familyRevocationService.revokeEntireFamily(session.getSessionFamilyId(), now);
             throw new RefreshTokenReusedException();
         }
@@ -160,6 +167,8 @@ public class RefreshTokenService implements RefreshTokenUseCase {
 
         log.info("Refresh succeeded: userId={}, familyId={}, newGeneration={}",
                 user.getId(), session.getSessionFamilyId(), newSession.getRefreshGeneration());
+
+        auditWriter.writeUserEvent("AUTH_REFRESH_SUCCEEDED", user.getId(), "auth_session", newSession.getId(), MDC.get("requestId"), "Token refreshed", null);
 
         return new RefreshTokenResult(rawAccessToken, rawRefreshToken);
     }

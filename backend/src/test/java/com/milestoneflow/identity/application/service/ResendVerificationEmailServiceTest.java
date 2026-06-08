@@ -3,6 +3,7 @@ package com.milestoneflow.identity.application.service;
 import com.milestoneflow.identity.application.command.ResendVerificationEmailCommand;
 import com.milestoneflow.identity.application.event.EmailVerificationRequestedEvent;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
@@ -42,6 +43,7 @@ class ResendVerificationEmailServiceTest {
     private Clock clock;
     private EmailVerificationProperties properties;
     private ApplicationEventPublisher eventPublisher;
+    private AuthAuditWriter auditWriter;
     private ResendVerificationEmailService service;
 
     @BeforeEach
@@ -54,10 +56,11 @@ class ResendVerificationEmailServiceTest {
         clock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), java.time.ZoneOffset.UTC);
         properties = new EmailVerificationProperties(Duration.ofHours(24));
         eventPublisher = mock(ApplicationEventPublisher.class);
+        auditWriter = mock(AuthAuditWriter.class);
 
         service = new ResendVerificationEmailService(
                 userRepository, tokenRepository, tokenGenerator,
-                tokenHasher, idGenerator, clock, properties, eventPublisher
+                tokenHasher, idGenerator, clock, properties, eventPublisher, auditWriter
         );
     }
 
