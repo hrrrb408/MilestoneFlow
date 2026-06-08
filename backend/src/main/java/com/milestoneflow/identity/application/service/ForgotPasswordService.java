@@ -5,9 +5,12 @@ import com.milestoneflow.identity.application.event.PasswordResetRequestedEvent;
 import com.milestoneflow.identity.application.port.in.ForgotPasswordUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.AuthRateLimitAction;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
 import com.milestoneflow.identity.domain.model.AppUser;
 import com.milestoneflow.identity.domain.model.VerificationToken;
 import com.milestoneflow.identity.domain.policy.EmailNormalizationResult;
@@ -61,6 +64,7 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
     private final PasswordResetProperties passwordResetProperties;
     private final ApplicationEventPublisher eventPublisher;
     private final AuthAuditWriter auditWriter;
+    private final AuthRateLimiter rateLimiter;
 
     public ForgotPasswordService(AppUserRepository userRepository,
                                  VerificationTokenRepository verificationTokenRepository,
@@ -70,7 +74,8 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
                                  Clock clock,
                                  PasswordResetProperties passwordResetProperties,
                                  ApplicationEventPublisher eventPublisher,
-                                 AuthAuditWriter auditWriter) {
+                                 AuthAuditWriter auditWriter,
+                                 AuthRateLimiter rateLimiter) {
         this.userRepository = userRepository;
         this.verificationTokenRepository = verificationTokenRepository;
         this.tokenGenerator = tokenGenerator;
@@ -80,6 +85,7 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
         this.passwordResetProperties = passwordResetProperties;
         this.eventPublisher = eventPublisher;
         this.auditWriter = auditWriter;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -87,6 +93,14 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
     public void forgotPassword(ForgotPasswordCommand command) {
         // 1. Normalize email
         EmailNormalizationResult emailResult = EmailNormalizationResult.normalize(command.getEmail());
+
+        // 1b. Rate limit check
+        String rateLimitKey = "forgot:" + tokenHasher.hash(emailResult.normalizedEmail());
+        RateLimitDecision limitDecision = rateLimiter.check(AuthRateLimitAction.FORGOT_PASSWORD, rateLimitKey);
+        if (!limitDecision.allowed()) {
+            // Per anti-enumeration: return silently as if request succeeded
+            return;
+        }
 
         // 2. Find user — no error if not found (anti-enumeration)
         Optional<AppUser> userOpt = userRepository.findByEmailNormalized(emailResult.normalizedEmail());

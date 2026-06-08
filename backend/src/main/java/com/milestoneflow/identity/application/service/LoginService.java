@@ -4,9 +4,13 @@ import com.milestoneflow.identity.application.command.LoginCommand;
 import com.milestoneflow.identity.application.port.in.LoginUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
+import com.milestoneflow.identity.application.ratelimit.AuthRateLimitAction;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
+import com.milestoneflow.identity.application.exception.AuthRateLimitedException;
 import com.milestoneflow.identity.application.result.LoginResult;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.EmailNotVerifiedException;
@@ -58,6 +62,7 @@ public class LoginService implements LoginUseCase {
     private final Clock clock;
     private final AuthTokenProperties tokenProperties;
     private final AuthAuditWriter auditWriter;
+    private final AuthRateLimiter rateLimiter;
 
     public LoginService(AppUserRepository userRepository,
                         AuthSessionRepository authSessionRepository,
@@ -67,7 +72,8 @@ public class LoginService implements LoginUseCase {
                         IdGenerator idGenerator,
                         Clock clock,
                         AuthTokenProperties tokenProperties,
-                        AuthAuditWriter auditWriter) {
+                        AuthAuditWriter auditWriter,
+                        AuthRateLimiter rateLimiter) {
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
         this.passwordEncoder = passwordEncoder;
@@ -77,6 +83,7 @@ public class LoginService implements LoginUseCase {
         this.clock = clock;
         this.tokenProperties = tokenProperties;
         this.auditWriter = auditWriter;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -84,6 +91,16 @@ public class LoginService implements LoginUseCase {
     public LoginResult login(LoginCommand command) {
         // 1. Normalize email
         EmailNormalizationResult emailResult = EmailNormalizationResult.normalize(command.getEmail());
+
+        // 1b. Rate limit check
+        String rateLimitKey = "login:" + tokenHasher.hash(emailResult.normalizedEmail());
+        RateLimitDecision limitDecision = rateLimiter.check(AuthRateLimitAction.LOGIN, rateLimitKey);
+        if (!limitDecision.allowed()) {
+            auditWriter.writeSystemEvent("AUTH_RATE_LIMIT_REJECTED", "app_user", null,
+                    MDC.get("requestId"), "Login rate limited",
+                    java.util.Map.of("reasonCode", "login_rate_limited"));
+            throw new AuthRateLimitedException();
+        }
 
         // 2. Find user by normalized email
         Optional<AppUser> userOpt = userRepository.findByEmailNormalized(emailResult.normalizedEmail());
@@ -163,6 +180,8 @@ public class LoginService implements LoginUseCase {
         authSessionRepository.save(session);
 
         log.info("Login succeeded userId={}", user.getId());
+
+        rateLimiter.reset(AuthRateLimitAction.LOGIN, rateLimitKey);
 
         auditWriter.writeUserEvent("AUTH_LOGIN_SUCCEEDED", user.getId(),
                 "auth_session", sessionId, MDC.get("requestId"),

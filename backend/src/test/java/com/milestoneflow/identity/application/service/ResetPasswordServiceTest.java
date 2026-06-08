@@ -3,9 +3,11 @@ package com.milestoneflow.identity.application.service;
 import com.milestoneflow.identity.application.command.ResetPasswordCommand;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.PasswordResetTokenExpiredException;
 import com.milestoneflow.identity.domain.exception.PasswordResetTokenInvalidException;
@@ -35,6 +37,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -51,6 +54,7 @@ class ResetPasswordServiceTest {
     @Mock private TokenHasher tokenHasher;
     @Mock private Clock clock;
     @Mock private AuthAuditWriter auditWriter;
+    @Mock private AuthRateLimiter rateLimiter;
 
     @Captor private ArgumentCaptor<AppUser> userCaptor;
     @Captor private ArgumentCaptor<VerificationToken> tokenCaptor;
@@ -69,8 +73,9 @@ class ResetPasswordServiceTest {
     @BeforeEach
     void setUp() {
         service = new ResetPasswordService(verificationTokenRepository, userRepository,
-                authSessionRepository, passwordEncoder, tokenHasher, clock, auditWriter);
+                authSessionRepository, passwordEncoder, tokenHasher, clock, auditWriter, rateLimiter);
         when(clock.instant()).thenReturn(NOW);
+        when(rateLimiter.check(any(), anyString())).thenReturn(RateLimitDecision.allowed(100));
     }
 
     private AppUser createActiveUser() {

@@ -1,5 +1,6 @@
 package com.milestoneflow.identity.api;
 
+import com.milestoneflow.identity.application.exception.AuthRateLimitedException;
 import com.milestoneflow.identity.application.exception.RefreshTokenMissingException;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.AuthSessionRevokedException;
@@ -170,6 +171,25 @@ public class IdentityExceptionHandler extends GlobalExceptionHandler {
         return build(
                 HttpStatus.UNAUTHORIZED,
                 "AUTH_UNAUTHENTICATED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles rate-limited authentication requests.
+     * Returns 429 AUTH_RATE_LIMITED.
+     *
+     * <p>Does not expose the limit type, key, counter, or retry timing.
+     */
+    @ExceptionHandler(AuthRateLimitedException.class)
+    public ResponseEntity<ApiErrorResponse> handleRateLimited(
+            AuthRateLimitedException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "AUTH_RATE_LIMITED",
                 ex.getMessage(),
                 request.getRequestURI()
         );

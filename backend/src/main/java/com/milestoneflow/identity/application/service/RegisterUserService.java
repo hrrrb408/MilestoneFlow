@@ -5,9 +5,13 @@ import com.milestoneflow.identity.application.event.EmailVerificationRequestedEv
 import com.milestoneflow.identity.application.port.in.RegisterUserUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.AuthRateLimitAction;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
+import com.milestoneflow.identity.application.exception.AuthRateLimitedException;
 import com.milestoneflow.identity.application.result.RegistrationResult;
 import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
 import com.milestoneflow.identity.domain.model.AppUser;
@@ -62,6 +66,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final EmailVerificationProperties properties;
     private final ApplicationEventPublisher eventPublisher;
     private final AuthAuditWriter auditWriter;
+    private final AuthRateLimiter rateLimiter;
 
     public RegisterUserService(AppUserRepository userRepository,
                                VerificationTokenRepository tokenRepository,
@@ -72,7 +77,8 @@ public class RegisterUserService implements RegisterUserUseCase {
                                Clock clock,
                                EmailVerificationProperties properties,
                                ApplicationEventPublisher eventPublisher,
-                               AuthAuditWriter auditWriter) {
+                               AuthAuditWriter auditWriter,
+                               AuthRateLimiter rateLimiter) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -83,6 +89,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.properties = properties;
         this.eventPublisher = eventPublisher;
         this.auditWriter = auditWriter;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -90,6 +97,13 @@ public class RegisterUserService implements RegisterUserUseCase {
     public RegistrationResult register(RegisterUserCommand command) {
         // 1. Normalize email
         EmailNormalizationResult emailResult = EmailNormalizationResult.normalize(command.getEmail());
+
+        // 1b. Rate limit check — key is derived from email (masked)
+        String registerKey = "reg:" + tokenHasher.hash(emailResult.normalizedEmail());
+        RateLimitDecision limitDecision = rateLimiter.check(AuthRateLimitAction.REGISTER, registerKey);
+        if (!limitDecision.allowed()) {
+            throw new AuthRateLimitedException();
+        }
 
         // 2. Validate password policy
         PasswordPolicy.validate(command.getPassword());
