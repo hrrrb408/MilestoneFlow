@@ -1,5 +1,6 @@
 package com.milestoneflow.identity.domain.model;
 
+import com.milestoneflow.identity.domain.type.AuthSessionRevokeReason;
 import com.milestoneflow.identity.domain.type.AuthSessionStatus;
 import com.milestoneflow.shared.persistence.TimestampedEntity;
 import jakarta.persistence.Column;
@@ -177,6 +178,56 @@ public class AuthSession extends TimestampedEntity {
             throw new IllegalStateException("Session has not expired yet");
         }
         this.status = AuthSessionStatus.EXPIRED;
+    }
+
+    /**
+     * Revokes this session because it was superseded by a refresh rotation.
+     *
+     * <p>Valid transition: {@code ACTIVE → REVOKED}.
+     *
+     * @param revokedAt the instant of revocation
+     */
+    public void revokeAsRotated(Instant revokedAt) {
+        Objects.requireNonNull(revokedAt, "revokedAt must not be null");
+        if (status == AuthSessionStatus.REVOKED) {
+            if (AuthSessionRevokeReason.REFRESH_ROTATED.equals(revokeReason)) {
+                return; // idempotent — already rotated
+            }
+            throw new IllegalStateException("Only ACTIVE sessions can be revoked as rotated");
+        }
+        if (status != AuthSessionStatus.ACTIVE) {
+            throw new IllegalStateException("Only ACTIVE sessions can be revoked as rotated");
+        }
+        this.status = AuthSessionStatus.REVOKED;
+        this.revokedAt = revokedAt;
+        this.revokeReason = AuthSessionRevokeReason.REFRESH_ROTATED;
+    }
+
+    /**
+     * Revokes this session because of a replay detection event.
+     *
+     * <p>Can be called on sessions in any status (ACTIVE, REVOKED, or EXPIRED)
+     * to ensure the entire family is uniformly marked.
+     *
+     * @param revokedAt the instant of revocation
+     */
+    public void revokeAsReplayDetected(Instant revokedAt) {
+        Objects.requireNonNull(revokedAt, "revokedAt must not be null");
+        if (status == AuthSessionStatus.REVOKED
+                && AuthSessionRevokeReason.REFRESH_REPLAY_DETECTED.equals(revokeReason)) {
+            return; // idempotent
+        }
+        this.status = AuthSessionStatus.REVOKED;
+        this.revokedAt = revokedAt;
+        this.revokeReason = AuthSessionRevokeReason.REFRESH_REPLAY_DETECTED;
+    }
+
+    /**
+     * Returns whether this session was revoked due to refresh token rotation.
+     */
+    public boolean isRefreshRotated() {
+        return status == AuthSessionStatus.REVOKED
+                && AuthSessionRevokeReason.REFRESH_ROTATED.equals(revokeReason);
     }
 
     /**

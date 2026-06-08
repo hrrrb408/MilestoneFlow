@@ -1,9 +1,14 @@
 package com.milestoneflow.identity.api;
 
+import com.milestoneflow.identity.application.exception.RefreshTokenMissingException;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
+import com.milestoneflow.identity.domain.exception.AuthSessionRevokedException;
 import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
 import com.milestoneflow.identity.domain.exception.EmailNotVerifiedException;
 import com.milestoneflow.identity.domain.exception.InvalidCredentialsException;
+import com.milestoneflow.identity.domain.exception.RefreshTokenExpiredException;
+import com.milestoneflow.identity.domain.exception.RefreshTokenInvalidException;
+import com.milestoneflow.identity.domain.exception.RefreshTokenReusedException;
 import com.milestoneflow.identity.domain.exception.VerificationTokenInvalidException;
 import com.milestoneflow.identity.domain.policy.PasswordPolicyViolation;
 import com.milestoneflow.shared.api.ApiErrorResponse;
@@ -146,6 +151,91 @@ public class IdentityExceptionHandler extends GlobalExceptionHandler {
         return build(
                 HttpStatus.UNPROCESSABLE_ENTITY,
                 "AUTH_PASSWORD_POLICY_VIOLATION",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles missing refresh token cookie.
+     * Returns 401 AUTH_UNAUTHENTICATED.
+     */
+    @ExceptionHandler(RefreshTokenMissingException.class)
+    public ResponseEntity<ApiErrorResponse> handleRefreshTokenMissing(
+            RefreshTokenMissingException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_UNAUTHENTICATED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles invalid (not found) refresh token.
+     * Returns 401 AUTH_REFRESH_TOKEN_INVALID.
+     */
+    @ExceptionHandler(RefreshTokenInvalidException.class)
+    public ResponseEntity<ApiErrorResponse> handleRefreshTokenInvalid(
+            RefreshTokenInvalidException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_REFRESH_TOKEN_INVALID",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles expired refresh token.
+     * Returns 401 AUTH_REFRESH_TOKEN_EXPIRED.
+     */
+    @ExceptionHandler(RefreshTokenExpiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleRefreshTokenExpired(
+            RefreshTokenExpiredException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_REFRESH_TOKEN_EXPIRED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles replayed (already-rotated) refresh token.
+     * Returns 401 AUTH_REFRESH_TOKEN_REUSED. Entire session family is revoked.
+     */
+    @ExceptionHandler(RefreshTokenReusedException.class)
+    public ResponseEntity<ApiErrorResponse> handleRefreshTokenReused(
+            RefreshTokenReusedException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_REFRESH_TOKEN_REUSED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles revoked session (non-rotation reason).
+     * Returns 401 AUTH_SESSION_REVOKED.
+     */
+    @ExceptionHandler(AuthSessionRevokedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthSessionRevoked(
+            AuthSessionRevokedException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_SESSION_REVOKED",
                 ex.getMessage(),
                 request.getRequestURI()
         );

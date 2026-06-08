@@ -45,6 +45,11 @@ public class AuthSessionRepositoryAdapter implements AuthSessionRepository {
     }
 
     @Override
+    public Optional<AuthSession> findByRefreshTokenHashForUpdate(String refreshTokenHash) {
+        return delegate.findLockedByRefreshTokenHash(refreshTokenHash);
+    }
+
+    @Override
     public List<AuthSession> findByUserIdAndStatus(UUID userId, AuthSessionStatus status) {
         return delegate.findByUserIdAndStatus(userId, status);
     }
@@ -52,5 +57,10 @@ public class AuthSessionRepositoryAdapter implements AuthSessionRepository {
     @Override
     public List<AuthSession> findBySessionFamilyId(UUID sessionFamilyId) {
         return delegate.findBySessionFamilyId(sessionFamilyId);
+    }
+
+    @Override
+    public List<AuthSession> findActiveBySessionFamilyId(UUID sessionFamilyId) {
+        return delegate.findBySessionFamilyIdAndStatus(sessionFamilyId, AuthSessionStatus.ACTIVE);
     }
 }

@@ -21,9 +21,6 @@ import java.util.UUID;
  *   <li>{@code user_id + status} — composite index</li>
  *   <li>{@code session_family_id + status} — composite index</li>
  * </ul>
- *
- * <p>No {@code SELECT FOR UPDATE} methods are provided in this milestone.
- * Pessimistic locking for refresh rotation will be added in MF-BE-009.
  */
 public interface AuthSessionRepository {
 
@@ -35,7 +32,28 @@ public interface AuthSessionRepository {
 
     Optional<AuthSession> findByRefreshTokenHash(String refreshTokenHash);
 
+    /**
+     * Finds an auth session by refresh token hash with a pessimistic write lock.
+     *
+     * <p>Must be called within an active transaction. The lock prevents
+     * concurrent refresh operations on the same session.
+     *
+     * @param refreshTokenHash SHA-256 hash of the raw refresh token
+     * @return the locked session, or empty if not found
+     */
+    Optional<AuthSession> findByRefreshTokenHashForUpdate(String refreshTokenHash);
+
     List<AuthSession> findByUserIdAndStatus(UUID userId, AuthSessionStatus status);
 
     List<AuthSession> findBySessionFamilyId(UUID sessionFamilyId);
+
+    /**
+     * Finds all ACTIVE sessions in a given family.
+     *
+     * <p>Used for family-wide revocation during replay detection.
+     *
+     * @param sessionFamilyId the family to query
+     * @return list of ACTIVE sessions in the family
+     */
+    List<AuthSession> findActiveBySessionFamilyId(UUID sessionFamilyId);
 }
