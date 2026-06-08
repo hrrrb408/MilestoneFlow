@@ -1,9 +1,9 @@
 # MF-BE-009: Refresh Token Rotation & Replay Detection
 
 **Status:** Complete
-**Branch:** `feat/MF-BE-009-refresh-token-rotation`
-**Base:** `feat/MF-BE-008-login-auth-session` (stacked, PR #1)
-**Depends on:** MF-BE-008
+**Branch:** `feat/MF-BE-009-refresh-token-rotation-final`
+**Base:** `main` (MF-BE-008 merged via PR #1)
+**Depends on:** MF-BE-008 (merged)
 
 ---
 
@@ -326,7 +326,19 @@ All 11 architecture rules pass, including:
 
 ---
 
-## 16. MF-BE-010 Input
+## 16. Production Release Status
+
+**Production release: NOT allowed.**
+
+Blocked by:
+- No real `VerificationEmailSender` implementation
+- No Logout (`/auth/logout`, `/auth/logout-all`)
+- No Password Reset / Password Change
+- No security audit or rate limiting
+
+---
+
+## 17. MF-BE-010 Input
 
 The following are prerequisites for MF-BE-010 (Logout, Password Change, Password Reset):
 
@@ -347,7 +359,7 @@ MF-BE-009 provides:
 
 ---
 
-## 17. Commit History
+## 18. Commit History
 
 ```
 ff55e7f feat(backend): add refresh session locking and revoke reasons
