@@ -289,10 +289,14 @@ class RefreshTokenFlowIT extends AbstractIntegrationTest {
         void expiredRefreshToken() {
             var loginResponse = doLogin();
 
-            // Expire both access and refresh tokens while preserving the
-            // ck_auth_session_refresh_after_access constraint (refresh >= access).
+            // Expire both access and refresh tokens while preserving DB constraints:
+            //   ck_auth_session_access_expiry  (access_expires_at > created_at)
+            //   ck_auth_session_refresh_expiry  (refresh_expires_at > created_at)
+            //   ck_auth_session_refresh_after_access (refresh >= access)
             jdbc.update("""
                 UPDATE auth_session SET
+                    created_at = now() - INTERVAL '31 days',
+                    updated_at = now() - INTERVAL '31 days',
                     access_expires_at = now() - INTERVAL '2 days',
                     refresh_expires_at = now() - INTERVAL '1 day'
                 WHERE user_id = ?::uuid AND status = 'ACTIVE'
