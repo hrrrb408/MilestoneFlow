@@ -36,5 +36,7 @@ milestoneflow:
   email:
     provider: noop
   auth:
+    rate-limit:
+      enabled: false
     cookies:
       secure: false
