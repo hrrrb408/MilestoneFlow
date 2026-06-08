@@ -2,6 +2,7 @@ package com.milestoneflow.identity.application.service;
 
 import com.milestoneflow.identity.application.command.RefreshTokenCommand;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
@@ -53,6 +54,7 @@ class RefreshTokenServiceTest {
     @Mock private TokenHasher tokenHasher;
     @Mock private IdGenerator idGenerator;
     @Mock private Clock clock;
+    @Mock private AuthAuditWriter auditWriter;
 
     @Captor private ArgumentCaptor<AuthSession> sessionCaptor;
 
@@ -73,7 +75,7 @@ class RefreshTokenServiceTest {
         var tokenProperties = new AuthTokenProperties(Duration.ofMinutes(15), Duration.ofDays(30));
         refreshTokenService = new RefreshTokenService(
                 authSessionRepository, appUserRepository, familyRevocationService,
-                tokenGenerator, tokenHasher, idGenerator, clock, tokenProperties);
+                tokenGenerator, tokenHasher, idGenerator, clock, tokenProperties, auditWriter);
     }
 
     private AppUser createActiveUser() {

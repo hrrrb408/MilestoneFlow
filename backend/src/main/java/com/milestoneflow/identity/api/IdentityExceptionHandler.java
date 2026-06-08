@@ -1,11 +1,14 @@
 package com.milestoneflow.identity.api;
 
+import com.milestoneflow.identity.application.exception.AuthRateLimitedException;
 import com.milestoneflow.identity.application.exception.RefreshTokenMissingException;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.AuthSessionRevokedException;
 import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
 import com.milestoneflow.identity.domain.exception.EmailNotVerifiedException;
 import com.milestoneflow.identity.domain.exception.InvalidCredentialsException;
+import com.milestoneflow.identity.domain.exception.PasswordResetTokenExpiredException;
+import com.milestoneflow.identity.domain.exception.PasswordResetTokenInvalidException;
 import com.milestoneflow.identity.domain.exception.RefreshTokenExpiredException;
 import com.milestoneflow.identity.domain.exception.RefreshTokenInvalidException;
 import com.milestoneflow.identity.domain.exception.RefreshTokenReusedException;
@@ -174,6 +177,25 @@ public class IdentityExceptionHandler extends GlobalExceptionHandler {
     }
 
     /**
+     * Handles rate-limited authentication requests.
+     * Returns 429 AUTH_RATE_LIMITED.
+     *
+     * <p>Does not expose the limit type, key, counter, or retry timing.
+     */
+    @ExceptionHandler(AuthRateLimitedException.class)
+    public ResponseEntity<ApiErrorResponse> handleRateLimited(
+            AuthRateLimitedException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "AUTH_RATE_LIMITED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
      * Handles invalid (not found) refresh token.
      * Returns 401 AUTH_REFRESH_TOKEN_INVALID.
      */
@@ -219,6 +241,40 @@ public class IdentityExceptionHandler extends GlobalExceptionHandler {
         return build(
                 HttpStatus.UNAUTHORIZED,
                 "AUTH_REFRESH_TOKEN_REUSED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles invalid or already-used password reset tokens.
+     * Returns 401 AUTH_PASSWORD_RESET_TOKEN_INVALID per B1 Baseline §15.
+     */
+    @ExceptionHandler(PasswordResetTokenInvalidException.class)
+    public ResponseEntity<ApiErrorResponse> handlePasswordResetTokenInvalid(
+            PasswordResetTokenInvalidException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_PASSWORD_RESET_TOKEN_INVALID",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles expired password reset tokens.
+     * Returns 401 AUTH_PASSWORD_RESET_TOKEN_EXPIRED per B1 Baseline §15.
+     */
+    @ExceptionHandler(PasswordResetTokenExpiredException.class)
+    public ResponseEntity<ApiErrorResponse> handlePasswordResetTokenExpired(
+            PasswordResetTokenExpiredException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_PASSWORD_RESET_TOKEN_EXPIRED",
                 ex.getMessage(),
                 request.getRequestURI()
         );

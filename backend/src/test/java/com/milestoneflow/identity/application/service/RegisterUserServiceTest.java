@@ -3,9 +3,12 @@ package com.milestoneflow.identity.application.service;
 import com.milestoneflow.identity.application.command.RegisterUserCommand;
 import com.milestoneflow.identity.application.event.EmailVerificationRequestedEvent;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
 import com.milestoneflow.identity.application.result.RegistrationResult;
 import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
 import com.milestoneflow.identity.domain.model.AppUser;
@@ -29,6 +32,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -47,6 +51,8 @@ class RegisterUserServiceTest {
     private Clock clock;
     private EmailVerificationProperties properties;
     private ApplicationEventPublisher eventPublisher;
+    private AuthAuditWriter auditWriter;
+    private AuthRateLimiter rateLimiter;
     private RegisterUserService service;
 
     @BeforeEach
@@ -60,12 +66,15 @@ class RegisterUserServiceTest {
         clock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), java.time.ZoneOffset.UTC);
         properties = new EmailVerificationProperties(Duration.ofHours(24));
         eventPublisher = mock(ApplicationEventPublisher.class);
+        auditWriter = mock(AuthAuditWriter.class);
+        rateLimiter = mock(AuthRateLimiter.class);
 
         service = new RegisterUserService(
                 userRepository, tokenRepository, passwordEncoder,
                 tokenGenerator, tokenHasher, idGenerator, clock,
-                properties, eventPublisher
+                properties, eventPublisher, auditWriter, rateLimiter
         );
+        when(rateLimiter.check(any(), anyString())).thenReturn(RateLimitDecision.allowed(100));
     }
 
     @Nested

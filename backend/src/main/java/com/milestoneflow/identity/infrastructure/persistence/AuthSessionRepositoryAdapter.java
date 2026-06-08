@@ -5,6 +5,7 @@ import com.milestoneflow.identity.domain.model.AuthSession;
 import com.milestoneflow.identity.domain.type.AuthSessionStatus;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -62,5 +63,15 @@ public class AuthSessionRepositoryAdapter implements AuthSessionRepository {
     @Override
     public List<AuthSession> findActiveBySessionFamilyId(UUID sessionFamilyId) {
         return delegate.findBySessionFamilyIdAndStatus(sessionFamilyId, AuthSessionStatus.ACTIVE);
+    }
+
+    @Override
+    public Optional<AuthSession> findByIdForUpdate(UUID id) {
+        return delegate.findLockedById(id);
+    }
+
+    @Override
+    public void revokeAllByUserId(UUID userId, Instant now, String reason) {
+        delegate.revokeAllActiveByUserId(userId, now, reason);
     }
 }

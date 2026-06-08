@@ -3,6 +3,7 @@ package com.milestoneflow.identity.application.service;
 import com.milestoneflow.identity.application.command.ConfirmEmailVerificationCommand;
 import com.milestoneflow.identity.application.port.in.ConfirmEmailVerificationUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
 import com.milestoneflow.identity.application.result.EmailVerificationResult;
@@ -15,6 +16,7 @@ import com.milestoneflow.identity.domain.type.UserStatus;
 import com.milestoneflow.identity.domain.type.VerificationTokenPurpose;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,15 +49,18 @@ public class ConfirmEmailVerificationService implements ConfirmEmailVerification
     private final AppUserRepository userRepository;
     private final TokenHasher tokenHasher;
     private final Clock clock;
+    private final AuthAuditWriter auditWriter;
 
     public ConfirmEmailVerificationService(VerificationTokenRepository tokenRepository,
                                            AppUserRepository userRepository,
                                            TokenHasher tokenHasher,
-                                           Clock clock) {
+                                           Clock clock,
+                                           AuthAuditWriter auditWriter) {
         this.tokenRepository = tokenRepository;
         this.userRepository = userRepository;
         this.tokenHasher = tokenHasher;
         this.clock = clock;
+        this.auditWriter = auditWriter;
     }
 
     @Override
@@ -96,6 +101,8 @@ public class ConfirmEmailVerificationService implements ConfirmEmailVerification
         tokenRepository.save(token);
 
         log.info("Email verification completed userId={}", user.getId());
+
+        auditWriter.writeUserEvent("AUTH_EMAIL_VERIFICATION_CONFIRMED", user.getId(), "app_user", user.getId(), MDC.get("requestId"), "Email verified", null);
 
         return new EmailVerificationResult(user.getId(), user.getEmail(), user.getStatus());
     }

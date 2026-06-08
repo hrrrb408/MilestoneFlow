@@ -61,12 +61,24 @@ public class SecurityConfiguration {
                                 "/auth/email-verification/confirm",
                                 "/auth/login",
                                 "/auth/refresh",
+                                "/auth/logout",
+                                "/auth/logout-all",
+                                "/auth/password/change",
+                                "/auth/password/forgot",
+                                "/auth/password/reset",
                                 "/actuator/health",
                                 "/actuator/info"
                         ))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers
+                        .xssProtection(xss -> xss.disable())
+                        .frameOptions(fo -> fo.deny())
+                        .referrerPolicy(rp -> rp.policy(
+                                org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                        .httpStrictTransportSecurity(hsts -> hsts.disable())
+                )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
@@ -76,6 +88,8 @@ public class SecurityConfiguration {
                                 "/auth/email-verification/confirm",
                                 "/auth/login",
                                 "/auth/refresh",
+                                "/auth/password/forgot",
+                                "/auth/password/reset",
                                 "/actuator/health",
                                 "/actuator/info"
                         ).permitAll()
