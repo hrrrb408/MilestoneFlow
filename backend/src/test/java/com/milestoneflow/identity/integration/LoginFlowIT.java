@@ -37,7 +37,10 @@ class LoginFlowIT extends AbstractIntegrationTest {
         // Clean up test data
         jdbc.update("DELETE FROM auth_session WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", EMAIL.toLowerCase());
         jdbc.update("DELETE FROM verification_token WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", EMAIL.toLowerCase());
+        jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");
+        jdbc.update("DELETE FROM audit_event WHERE actor_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", EMAIL.toLowerCase());
         jdbc.update("DELETE FROM app_user WHERE email_normalized = ?", EMAIL.toLowerCase());
+        jdbc.update("ALTER TABLE audit_event ENABLE TRIGGER ALL");
 
         // Create a verified ACTIVE user directly in the database
         String encodedPassword = passwordEncoder.encode(PASSWORD);
