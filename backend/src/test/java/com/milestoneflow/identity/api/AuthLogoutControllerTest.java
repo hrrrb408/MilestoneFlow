@@ -47,7 +47,7 @@ class AuthLogoutControllerTest {
     private static final UUID USER_ID = UUID.fromString("01923456-7890-7abc-def0-123456789abc");
     private static final UUID SESSION_ID = UUID.fromString("01923456-7890-7abc-def0-123456789abd");
     private static final UUID FAMILY_ID = UUID.fromString("01923456-7890-7abc-def0-123456789abe");
-    private static final Instant NOW = Instant.parse("2026-06-08T12:00:00Z");
+    private static final Instant NOW = Instant.parse("2099-01-01T00:00:00Z");
     private static final String RAW_ACCESS_TOKEN = "test-access-token-for-logout";
     private static final String ACCESS_TOKEN_HASH = "a".repeat(64);
 
