@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.*;
+import org.springframework.test.context.TestPropertySource;
 
 import java.util.UUID;
 
@@ -16,7 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>Verifies security headers, cache-control, and sensitive data
  * protection across auth endpoints.
+ *
+ * <p>Rate limiting is re-enabled for tests that verify rate limit behavior.
  */
+@TestPropertySource(properties = "milestoneflow.auth.rate-limit.enabled=true")
 class AuthSecurityHardeningIT extends AbstractIntegrationTest {
 
     @Autowired
