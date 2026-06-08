@@ -61,6 +61,24 @@ milestoneflow:
       token-ttl: PT1H
     access-token-ttl: PT15M
     refresh-token-ttl: P30D
+    rate-limit:
+      enabled: true
+      policies:
+        LOGIN:
+          max-attempts: 5
+          window: PT15M
+        REGISTER:
+          max-attempts: 10
+          window: PT1H
+        EMAIL_VERIFICATION_RESEND:
+          max-attempts: 3
+          window: PT15M
+        FORGOT_PASSWORD:
+          max-attempts: 3
+          window: PT15M
+        RESET_PASSWORD:
+          max-attempts: 10
+          window: PT15M
     cookies:
       access-name: MF_ACCESS
       refresh-name: MF_REFRESH
