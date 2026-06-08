@@ -296,7 +296,6 @@ class RefreshTokenFlowIT extends AbstractIntegrationTest {
             jdbc.update("""
                 UPDATE auth_session SET
                     created_at = now() - INTERVAL '31 days',
-                    updated_at = now() - INTERVAL '31 days',
                     access_expires_at = now() - INTERVAL '2 days',
                     refresh_expires_at = now() - INTERVAL '1 day'
                 WHERE user_id = ?::uuid AND status = 'ACTIVE'
