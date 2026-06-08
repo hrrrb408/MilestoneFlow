@@ -108,6 +108,21 @@ public class AuthCookieWriter {
                 .build();
     }
 
+    /**
+     * Builds an XSRF-TOKEN cookie with Max-Age=0 to clear it on logout.
+     *
+     * @return ResponseCookie that clears XSRF-TOKEN
+     */
+    public ResponseCookie buildClearXsrfCookie() {
+        return ResponseCookie.from(cookieProperties.xsrfName(), "")
+                .httpOnly(false)
+                .secure(cookieProperties.secure())
+                .sameSite("Lax")
+                .path(cookieProperties.accessPath())
+                .maxAge(Duration.ZERO)
+                .build();
+    }
+
     @Override
     public String toString() {
         return "AuthCookieWriter{accessName=" + cookieProperties.accessName()

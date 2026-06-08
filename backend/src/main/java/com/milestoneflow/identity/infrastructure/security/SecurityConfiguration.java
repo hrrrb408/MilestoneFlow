@@ -61,6 +61,10 @@ public class SecurityConfiguration {
                                 "/auth/email-verification/confirm",
                                 "/auth/login",
                                 "/auth/refresh",
+                                "/auth/logout",
+                                "/auth/logout-all",
+                                "/auth/password/forgot",
+                                "/auth/password/reset",
                                 "/actuator/health",
                                 "/actuator/info"
                         ))
@@ -76,6 +80,8 @@ public class SecurityConfiguration {
                                 "/auth/email-verification/confirm",
                                 "/auth/login",
                                 "/auth/refresh",
+                                "/auth/password/forgot",
+                                "/auth/password/reset",
                                 "/actuator/health",
                                 "/actuator/info"
                         ).permitAll()
