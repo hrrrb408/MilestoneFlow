@@ -32,9 +32,28 @@ public final class AuthSessionRevokeReason {
      */
     public static final String REFRESH_EXPIRED = "REFRESH_EXPIRED";
 
+    /**
+     * Session was explicitly revoked by a user logout request.
+     */
+    public static final String LOGOUT = "LOGOUT";
+
+    /**
+     * All active sessions for a user were revoked by a logout-all request.
+     */
+    public static final String LOGOUT_ALL = "LOGOUT_ALL";
+
+    /**
+     * All sessions revoked because the user changed their password.
+     */
+    public static final String PASSWORD_CHANGE = "PASSWORD_CHANGE";
+
+    /**
+     * All sessions revoked because the user reset their password.
+     */
+    public static final String PASSWORD_RESET = "PASSWORD_RESET";
+
     // ── Future milestones (defined here for reference only) ──────────────
 
-    // public static final String LOGOUT = "LOGOUT";
     // public static final String USER_DISABLED = "USER_DISABLED";
     // public static final String ADMIN_REVOKED = "ADMIN_REVOKED";
 }
