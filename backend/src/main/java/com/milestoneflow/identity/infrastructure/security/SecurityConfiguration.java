@@ -63,6 +63,7 @@ public class SecurityConfiguration {
                                 "/auth/refresh",
                                 "/auth/logout",
                                 "/auth/logout-all",
+                                "/auth/password/change",
                                 "/auth/password/forgot",
                                 "/auth/password/reset",
                                 "/actuator/health",

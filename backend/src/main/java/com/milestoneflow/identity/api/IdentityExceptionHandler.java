@@ -6,6 +6,8 @@ import com.milestoneflow.identity.domain.exception.AuthSessionRevokedException;
 import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
 import com.milestoneflow.identity.domain.exception.EmailNotVerifiedException;
 import com.milestoneflow.identity.domain.exception.InvalidCredentialsException;
+import com.milestoneflow.identity.domain.exception.PasswordResetTokenExpiredException;
+import com.milestoneflow.identity.domain.exception.PasswordResetTokenInvalidException;
 import com.milestoneflow.identity.domain.exception.RefreshTokenExpiredException;
 import com.milestoneflow.identity.domain.exception.RefreshTokenInvalidException;
 import com.milestoneflow.identity.domain.exception.RefreshTokenReusedException;
@@ -219,6 +221,40 @@ public class IdentityExceptionHandler extends GlobalExceptionHandler {
         return build(
                 HttpStatus.UNAUTHORIZED,
                 "AUTH_REFRESH_TOKEN_REUSED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles invalid or already-used password reset tokens.
+     * Returns 401 AUTH_PASSWORD_RESET_TOKEN_INVALID per B1 Baseline §15.
+     */
+    @ExceptionHandler(PasswordResetTokenInvalidException.class)
+    public ResponseEntity<ApiErrorResponse> handlePasswordResetTokenInvalid(
+            PasswordResetTokenInvalidException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_PASSWORD_RESET_TOKEN_INVALID",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles expired password reset tokens.
+     * Returns 401 AUTH_PASSWORD_RESET_TOKEN_EXPIRED per B1 Baseline §15.
+     */
+    @ExceptionHandler(PasswordResetTokenExpiredException.class)
+    public ResponseEntity<ApiErrorResponse> handlePasswordResetTokenExpired(
+            PasswordResetTokenExpiredException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTH_PASSWORD_RESET_TOKEN_EXPIRED",
                 ex.getMessage(),
                 request.getRequestURI()
         );

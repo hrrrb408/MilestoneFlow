@@ -57,6 +57,8 @@ milestoneflow:
   auth:
     email-verification:
       token-ttl: PT24H
+    password-reset:
+      token-ttl: PT1H
     access-token-ttl: PT15M
     refresh-token-ttl: P30D
     cookies:
