@@ -4,9 +4,11 @@ import com.milestoneflow.identity.application.command.ForgotPasswordCommand;
 import com.milestoneflow.identity.application.event.PasswordResetRequestedEvent;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
 import com.milestoneflow.identity.domain.model.AppUser;
 import com.milestoneflow.identity.domain.model.VerificationToken;
 import com.milestoneflow.identity.domain.type.UserStatus;
@@ -35,6 +37,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -54,6 +57,7 @@ class ForgotPasswordServiceTest {
     @Mock private Clock clock;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AuthAuditWriter auditWriter;
+    @Mock private AuthRateLimiter rateLimiter;
 
     @Captor private ArgumentCaptor<VerificationToken> tokenCaptor;
     @Captor private ArgumentCaptor<PasswordResetRequestedEvent> eventCaptor;
@@ -72,8 +76,9 @@ class ForgotPasswordServiceTest {
     void setUp() {
         PasswordResetProperties properties = new PasswordResetProperties(Duration.ofHours(1));
         service = new ForgotPasswordService(userRepository, verificationTokenRepository,
-                tokenGenerator, tokenHasher, idGenerator, clock, properties, eventPublisher, auditWriter);
+                tokenGenerator, tokenHasher, idGenerator, clock, properties, eventPublisher, auditWriter, rateLimiter);
         when(clock.instant()).thenReturn(NOW);
+        when(rateLimiter.check(any(), anyString())).thenReturn(RateLimitDecision.allowed(100));
     }
 
     private AppUser createActiveUser() {

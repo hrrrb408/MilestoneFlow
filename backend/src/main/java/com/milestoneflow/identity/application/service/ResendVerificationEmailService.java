@@ -5,9 +5,12 @@ import com.milestoneflow.identity.application.event.EmailVerificationRequestedEv
 import com.milestoneflow.identity.application.port.in.ResendVerificationEmailUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.AuthRateLimitAction;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
 import com.milestoneflow.identity.domain.model.AppUser;
 import com.milestoneflow.identity.domain.model.VerificationToken;
 import com.milestoneflow.identity.domain.policy.EmailNormalizationResult;
@@ -53,6 +56,7 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
     private final EmailVerificationProperties properties;
     private final ApplicationEventPublisher eventPublisher;
     private final AuthAuditWriter auditWriter;
+    private final AuthRateLimiter rateLimiter;
 
     public ResendVerificationEmailService(AppUserRepository userRepository,
                                           VerificationTokenRepository tokenRepository,
@@ -62,7 +66,8 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
                                           Clock clock,
                                           EmailVerificationProperties properties,
                                           ApplicationEventPublisher eventPublisher,
-                                          AuthAuditWriter auditWriter) {
+                                          AuthAuditWriter auditWriter,
+                                          AuthRateLimiter rateLimiter) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.tokenGenerator = tokenGenerator;
@@ -72,6 +77,7 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
         this.properties = properties;
         this.eventPublisher = eventPublisher;
         this.auditWriter = auditWriter;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -79,6 +85,15 @@ public class ResendVerificationEmailService implements ResendVerificationEmailUs
     public void resend(ResendVerificationEmailCommand command) {
         // Normalize the email for lookup
         EmailNormalizationResult emailResult = EmailNormalizationResult.normalize(command.getEmail());
+
+        // Rate limit check
+        String rateLimitKey = "resend:" + tokenHasher.hash(emailResult.normalizedEmail());
+        RateLimitDecision limitDecision = rateLimiter.check(AuthRateLimitAction.EMAIL_VERIFICATION_RESEND, rateLimitKey);
+        if (!limitDecision.allowed()) {
+            // Per anti-enumeration: don't expose whether email exists
+            // Just return silently as if the request succeeded
+            return;
+        }
 
         // Find user by normalized email
         var userOpt = userRepository.findByEmailNormalized(emailResult.normalizedEmail());

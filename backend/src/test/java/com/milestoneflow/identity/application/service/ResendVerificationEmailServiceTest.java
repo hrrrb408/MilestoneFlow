@@ -4,9 +4,11 @@ import com.milestoneflow.identity.application.command.ResendVerificationEmailCom
 import com.milestoneflow.identity.application.event.EmailVerificationRequestedEvent;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
 import com.milestoneflow.identity.domain.model.AppUser;
 import com.milestoneflow.identity.domain.type.UserStatus;
 import com.milestoneflow.identity.domain.type.VerificationTokenPurpose;
@@ -26,6 +28,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -44,6 +47,7 @@ class ResendVerificationEmailServiceTest {
     private EmailVerificationProperties properties;
     private ApplicationEventPublisher eventPublisher;
     private AuthAuditWriter auditWriter;
+    private AuthRateLimiter rateLimiter;
     private ResendVerificationEmailService service;
 
     @BeforeEach
@@ -57,11 +61,13 @@ class ResendVerificationEmailServiceTest {
         properties = new EmailVerificationProperties(Duration.ofHours(24));
         eventPublisher = mock(ApplicationEventPublisher.class);
         auditWriter = mock(AuthAuditWriter.class);
+        rateLimiter = mock(AuthRateLimiter.class);
 
         service = new ResendVerificationEmailService(
                 userRepository, tokenRepository, tokenGenerator,
-                tokenHasher, idGenerator, clock, properties, eventPublisher, auditWriter
+                tokenHasher, idGenerator, clock, properties, eventPublisher, auditWriter, rateLimiter
         );
+        when(rateLimiter.check(any(), anyString())).thenReturn(RateLimitDecision.allowed(100));
     }
 
     @Nested

@@ -4,9 +4,13 @@ import com.milestoneflow.identity.application.command.ResetPasswordCommand;
 import com.milestoneflow.identity.application.port.in.ResetPasswordUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
 import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.AuthRateLimitAction;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
+import com.milestoneflow.identity.application.exception.AuthRateLimitedException;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.PasswordResetTokenExpiredException;
 import com.milestoneflow.identity.domain.exception.PasswordResetTokenInvalidException;
@@ -58,6 +62,7 @@ public class ResetPasswordService implements ResetPasswordUseCase {
     private final TokenHasher tokenHasher;
     private final Clock clock;
     private final AuthAuditWriter auditWriter;
+    private final AuthRateLimiter rateLimiter;
 
     public ResetPasswordService(VerificationTokenRepository verificationTokenRepository,
                                 AppUserRepository userRepository,
@@ -65,7 +70,8 @@ public class ResetPasswordService implements ResetPasswordUseCase {
                                 PasswordEncoder passwordEncoder,
                                 TokenHasher tokenHasher,
                                 Clock clock,
-                                AuthAuditWriter auditWriter) {
+                                AuthAuditWriter auditWriter,
+                                AuthRateLimiter rateLimiter) {
         this.verificationTokenRepository = verificationTokenRepository;
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
@@ -73,6 +79,7 @@ public class ResetPasswordService implements ResetPasswordUseCase {
         this.tokenHasher = tokenHasher;
         this.clock = clock;
         this.auditWriter = auditWriter;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -82,6 +89,13 @@ public class ResetPasswordService implements ResetPasswordUseCase {
 
         // 1. Hash the raw token
         String tokenHash = tokenHasher.hash(command.getRawToken());
+
+        // 1b. Rate limit check — use prefix of token hash as key (never raw token or full hash)
+        String rateLimitKey = "reset:" + tokenHash.substring(0, 8);
+        RateLimitDecision limitDecision = rateLimiter.check(AuthRateLimitAction.RESET_PASSWORD, rateLimitKey);
+        if (!limitDecision.allowed()) {
+            throw new AuthRateLimitedException();
+        }
 
         // 2. Find token with PESSIMISTIC_WRITE lock
         Optional<VerificationToken> tokenOpt = verificationTokenRepository
