@@ -7,6 +7,12 @@ import com.milestoneflow.identity.application.port.in.LoginUseCase;
 import com.milestoneflow.identity.application.result.LoginResult;
 import com.milestoneflow.identity.infrastructure.security.AuthCookieWriter;
 import com.milestoneflow.shared.api.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Authentication", description = "Login and session management")
 public class AuthLoginController {
 
     private final LoginUseCase loginUseCase;
@@ -40,6 +47,27 @@ public class AuthLoginController {
      * <p>Sets MF_ACCESS, MF_REFRESH, and XSRF-TOKEN cookies.
      * Response body contains user info but never tokens.
      */
+    @Operation(summary = "Login",
+            description = "Authenticates a user with email and password. "
+                    + "On success, sets HttpOnly cookies (MF_ACCESS, MF_REFRESH) and XSRF-TOKEN. "
+                    + "Rate limited to 5 requests/15min.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Login successful — cookies set"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Invalid credentials or account disabled",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    description = "Email not verified",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422",
+                    description = "Validation failed",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429",
+                    description = "Rate limited",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @SecurityRequirements
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request) {

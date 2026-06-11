@@ -58,3 +58,9 @@ milestoneflow:
   auth:
     cookies:
       secure: true
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
