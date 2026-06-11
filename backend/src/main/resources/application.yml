@@ -54,6 +54,13 @@ logging:
     com.milestoneflow: INFO
 
 milestoneflow:
+  mail:
+    provider: noop
+    from: "no-reply@milestoneflow.local"
+    frontend-base-url: "http://localhost:5173"
+    verification-path: "/auth/verify-email"
+    password-reset-path: "/auth/reset-password"
+    sender-name: "MilestoneFlow"
   auth:
     email-verification:
       token-ttl: PT24H

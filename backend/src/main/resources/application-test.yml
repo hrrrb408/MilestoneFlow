@@ -33,7 +33,7 @@ logging:
     org.hibernate: WARN
 
 milestoneflow:
-  email:
+  mail:
     provider: noop
   auth:
     rate-limit:

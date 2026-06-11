@@ -44,7 +44,7 @@ class VerificationEmailSenderConfigurationTest {
             beanCheckRunner
                     .withPropertyValues(
                             "spring.profiles.active=local",
-                            "milestoneflow.email.provider=noop"
+                            "milestoneflow.mail.provider=noop"
                     )
                     .withUserConfiguration(NoopVerificationEmailSender.class)
                     .run(context -> {
@@ -77,7 +77,7 @@ class VerificationEmailSenderConfigurationTest {
             beanCheckRunner
                     .withPropertyValues(
                             "spring.profiles.active=test",
-                            "milestoneflow.email.provider=noop"
+                            "milestoneflow.mail.provider=noop"
                     )
                     .withUserConfiguration(NoopVerificationEmailSender.class)
                     .run(context -> {
@@ -110,7 +110,7 @@ class VerificationEmailSenderConfigurationTest {
             beanCheckRunner
                     .withPropertyValues(
                             "spring.profiles.active=prod",
-                            "milestoneflow.email.provider=noop"
+                            "milestoneflow.mail.provider=noop"
                     )
                     .withUserConfiguration(NoopVerificationEmailSender.class)
                     .run(context -> {
