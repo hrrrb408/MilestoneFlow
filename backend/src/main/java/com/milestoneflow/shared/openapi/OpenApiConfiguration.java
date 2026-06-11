@@ -40,7 +40,7 @@ public class OpenApiConfiguration {
                         .version("v0.1")
                         .description("MilestoneFlow Pilot MVP v0.1 backend API. "
                                 + "Authentication uses HttpOnly cookies (MF_ACCESS, MF_REFRESH) "
-                                + "with CSRF protection. No JWT Bearer tokens are used."))
+                                + "with CSRF protection. No JWT tokens are used."))
                 .servers(List.of(new Server().url("/")))
                 .addSecurityItem(new SecurityRequirement().addList("cookieAuth"))
                 .components(new Components()

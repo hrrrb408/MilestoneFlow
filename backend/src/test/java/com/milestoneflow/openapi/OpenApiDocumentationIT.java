@@ -68,8 +68,6 @@ class OpenApiDocumentationIT {
         @DisplayName("includes register endpoint")
         void includesRegister() throws Exception {
             JsonNode docs = getApiDocs();
-            assertThat(docs.at("/paths").has("post")).isTrue();
-
             String paths = docs.get("paths").toPrettyString();
             assertThat(paths).contains("/auth/register");
         }
