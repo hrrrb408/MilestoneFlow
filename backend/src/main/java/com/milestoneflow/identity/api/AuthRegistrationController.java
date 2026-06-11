@@ -14,6 +14,12 @@ import com.milestoneflow.identity.application.port.in.ResendVerificationEmailUse
 import com.milestoneflow.identity.application.result.EmailVerificationResult;
 import com.milestoneflow.identity.application.result.RegistrationResult;
 import com.milestoneflow.shared.api.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
@@ -34,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Authentication", description = "User registration, email verification, and resend")
 public class AuthRegistrationController {
 
     private final RegisterUserUseCase registerUserUseCase;
@@ -52,8 +59,24 @@ public class AuthRegistrationController {
      * Registers a new user.
      *
      * <p>Creates a user in PENDING_VERIFICATION state and sends a verification email.
-     * Rate limit hook deferred to MF-BE-011.
      */
+    @Operation(summary = "Register a new user",
+            description = "Creates a new user account in PENDING_VERIFICATION state "
+                    + "and sends a verification email. Rate limited to 10 requests/hour.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201",
+                    description = "User registered successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+                    description = "Email already registered",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422",
+                    description = "Validation failed",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429",
+                    description = "Rate limited",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @SecurityRequirements
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<RegistrationResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
@@ -79,10 +102,24 @@ public class AuthRegistrationController {
     /**
      * Resends a verification email.
      *
-     * <p>Always returns 202 Accepted regardless of whether the email exists
+     * <p>Always returns 200 Accepted regardless of whether the email exists
      * or the account status to prevent account enumeration.
-     * Rate limit hook deferred to MF-BE-011.
      */
+    @Operation(summary = "Resend verification email",
+            description = "Resends the email verification link. Always returns 200 "
+                    + "regardless of email existence to prevent account enumeration. "
+                    + "Rate limited to 3 requests/15min.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Request accepted (email sent if eligible)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422",
+                    description = "Validation failed",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429",
+                    description = "Rate limited",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @SecurityRequirements
     @PostMapping("/email-verification/resend")
     public ResponseEntity<ApiResponse<Object>> resendVerificationEmail(
             @Valid @RequestBody ResendVerificationEmailRequest request) {
@@ -101,6 +138,20 @@ public class AuthRegistrationController {
     /**
      * Confirms email verification using the provided token.
      */
+    @Operation(summary = "Confirm email verification",
+            description = "Verifies the user's email address using the token from the "
+                    + "verification email link. No authentication required.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Email verified successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Token invalid or expired",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422",
+                    description = "Validation failed",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @SecurityRequirements
     @PostMapping("/email-verification/confirm")
     public ResponseEntity<ApiResponse<EmailVerificationResponse>> confirmEmailVerification(
             @Valid @RequestBody ConfirmEmailVerificationRequest request) {
