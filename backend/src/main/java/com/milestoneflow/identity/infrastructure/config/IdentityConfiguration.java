@@ -12,7 +12,8 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
         EmailVerificationProperties.class,
         AuthTokenProperties.class,
-        AuthCookieProperties.class
+        AuthCookieProperties.class,
+        PasswordResetProperties.class
 })
 public class IdentityConfiguration {
 }
