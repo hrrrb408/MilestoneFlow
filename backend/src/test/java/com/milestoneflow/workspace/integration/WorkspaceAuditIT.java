@@ -48,7 +48,11 @@ class WorkspaceAuditIT extends AbstractIntegrationTest {
         ResponseEntity<Map> loginResponse = restTemplate.exchange(
                 "/auth/login", HttpMethod.POST,
                 new HttpEntity<>(body, headers), Map.class);
-        String accessToken = loginResponse.getHeaders().getFirst("Set-Cookie");
+        var setCookies = loginResponse.getHeaders().get("Set-Cookie");
+        String accessToken = setCookies.stream()
+                .filter(c -> c.startsWith("MF_ACCESS="))
+                .findFirst()
+                .orElse(null);
 
         // Get CSRF token
         var csrfHeaders = new HttpHeaders();

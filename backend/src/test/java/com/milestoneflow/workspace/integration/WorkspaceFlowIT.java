@@ -63,7 +63,11 @@ class WorkspaceFlowIT extends AbstractIntegrationTest {
                 "/auth/login", HttpMethod.POST,
                 new HttpEntity<>(body, headers), Map.class);
 
-        accessToken = loginResponse.getHeaders().getFirst("Set-Cookie");
+        var setCookies = loginResponse.getHeaders().get("Set-Cookie");
+        accessToken = setCookies.stream()
+                .filter(c -> c.startsWith("MF_ACCESS="))
+                .findFirst()
+                .orElse(null);
     }
 
     private void cleanWorkspaceData() {

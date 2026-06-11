@@ -76,7 +76,11 @@ class WorkspaceSecurityIT extends AbstractIntegrationTest {
         ResponseEntity<Map> response = restTemplate.exchange(
                 "/auth/login", HttpMethod.POST,
                 new HttpEntity<>(body, headers), Map.class);
-        return response.getHeaders().getFirst("Set-Cookie");
+        var setCookies = response.getHeaders().get("Set-Cookie");
+        return setCookies.stream()
+                .filter(c -> c.startsWith("MF_ACCESS="))
+                .findFirst()
+                .orElse(null);
     }
 
     private HttpHeaders authHeadersWithCsrf(String accessCookie) {

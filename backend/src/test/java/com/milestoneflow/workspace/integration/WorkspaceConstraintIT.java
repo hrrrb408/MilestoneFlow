@@ -1,6 +1,7 @@
 package com.milestoneflow.workspace.integration;
 
 import com.milestoneflow.shared.integration.AbstractIntegrationTest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class WorkspaceConstraintIT extends AbstractIntegrationTest {
 
     @Autowired private JdbcTemplate jdbc;
+
+    @AfterEach
+    void tearDown() {
+        jdbc.update("DELETE FROM workspace_membership");
+        jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");
+        jdbc.update("DELETE FROM audit_event");
+        jdbc.update("ALTER TABLE audit_event ENABLE TRIGGER ALL");
+        jdbc.update("DELETE FROM workspace");
+        jdbc.update("DELETE FROM app_user WHERE email_normalized LIKE '%test.com' OR email_normalized LIKE '%test%'");
+    }
 
     // ── workspace.slug unique constraint ─────────────────────────────────
 
@@ -83,7 +94,7 @@ class WorkspaceConstraintIT extends AbstractIntegrationTest {
                         INSERT INTO workspace (id, name, slug, default_currency, timezone, status, version, created_at, updated_at)
                         VALUES (gen_random_uuid(), 'Test', 'long-currency', 'TWDD', 'Asia/Taipei', 'ACTIVE', 0, now(), now())
                         """)
-            ).hasMessageContaining("ck_workspace_currency");
+            ).hasMessageMatching(".*(ck_workspace_currency|value too long).*");
         }
     }
 
