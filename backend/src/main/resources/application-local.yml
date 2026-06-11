@@ -37,7 +37,7 @@ logging:
     org.flywaydb: DEBUG
 
 milestoneflow:
-  email:
+  mail:
     provider: noop
   auth:
     cookies:

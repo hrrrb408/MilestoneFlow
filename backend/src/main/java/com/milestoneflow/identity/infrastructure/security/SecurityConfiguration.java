@@ -67,7 +67,11 @@ public class SecurityConfiguration {
                                 "/auth/password/forgot",
                                 "/auth/password/reset",
                                 "/actuator/health",
-                                "/actuator/info"
+                                "/actuator/info",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
                         ))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -91,7 +95,11 @@ public class SecurityConfiguration {
                                 "/auth/password/forgot",
                                 "/auth/password/reset",
                                 "/actuator/health",
-                                "/actuator/info"
+                                "/actuator/info",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
                         ).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(accessTokenFilter, UsernamePasswordAuthenticationFilter.class);

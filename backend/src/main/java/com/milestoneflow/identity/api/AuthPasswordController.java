@@ -15,6 +15,12 @@ import com.milestoneflow.identity.application.port.in.ResetPasswordUseCase;
 import com.milestoneflow.identity.infrastructure.security.AuthCookieWriter;
 import com.milestoneflow.identity.infrastructure.security.CurrentUserPrincipal;
 import com.milestoneflow.shared.api.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +49,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Authentication", description = "Password management flows")
 public class AuthPasswordController {
 
     private final ChangePasswordUseCase changePasswordUseCase;
@@ -66,6 +73,19 @@ public class AuthPasswordController {
      * <p>Per B1 Baseline §3: all sessions are revoked on password change.
      * Cookies are cleared because the current session is now invalid.
      */
+    @Operation(summary = "Change password",
+            description = "Changes the authenticated user's password. "
+                    + "All sessions are revoked on success. Requires authentication.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Password changed — all sessions revoked"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Not authenticated or invalid current password",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422",
+                    description = "Validation failed or password policy violation",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
     @PostMapping("/password/change")
     public ResponseEntity<ApiResponse<PasswordChangeResponse>> changePassword(
             @AuthenticationPrincipal CurrentUserPrincipal principal,
@@ -92,6 +112,21 @@ public class AuthPasswordController {
      * <p>Per B1 Baseline §10: always returns 200 regardless of whether
      * the email exists to prevent account enumeration.
      */
+    @Operation(summary = "Request password reset",
+            description = "Sends a password reset email if the account exists. "
+                    + "Always returns 200 regardless of email existence to prevent "
+                    + "account enumeration. Rate limited to 3 requests/15min.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Request accepted (email sent if account exists)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422",
+                    description = "Validation failed",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429",
+                    description = "Rate limited",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @SecurityRequirements
     @PostMapping("/password/forgot")
     public ResponseEntity<ApiResponse<ForgotPasswordResponse>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request) {
@@ -109,6 +144,24 @@ public class AuthPasswordController {
      * <p>Per B1 Baseline §9: all sessions are revoked on successful reset.
      * Cookies are cleared if the request carries old session cookies.
      */
+    @Operation(summary = "Reset password",
+            description = "Resets the user's password using the token from the reset email. "
+                    + "All sessions are revoked on success. "
+                    + "Rate limited to 10 requests/15min.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Password reset — all sessions revoked"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Reset token invalid or expired",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422",
+                    description = "Validation failed or password policy violation",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429",
+                    description = "Rate limited",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @SecurityRequirements
     @PostMapping("/password/reset")
     public ResponseEntity<ApiResponse<ResetPasswordResponse>> resetPassword(
             @Valid @RequestBody ResetPasswordRequest request) {

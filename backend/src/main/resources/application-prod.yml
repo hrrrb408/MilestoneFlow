@@ -17,6 +17,18 @@ spring:
   jpa:
     show-sql: false
 
+  mail:
+    host: ${SMTP_HOST}
+    port: ${SMTP_PORT}
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
 management:
   endpoints:
     web:
@@ -36,6 +48,19 @@ logging:
     org.flywaydb: INFO
 
 milestoneflow:
+  mail:
+    provider: smtp
+    from: "${MILESTONEFLOW_MAIL_FROM}"
+    frontend-base-url: "${MILESTONEFLOW_FRONTEND_BASE_URL}"
+    verification-path: "/auth/verify-email"
+    password-reset-path: "/auth/reset-password"
+    sender-name: "MilestoneFlow"
   auth:
     cookies:
       secure: true
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}

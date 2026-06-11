@@ -6,6 +6,12 @@ import com.milestoneflow.identity.application.result.RefreshTokenResult;
 import com.milestoneflow.identity.infrastructure.config.AuthCookieProperties;
 import com.milestoneflow.identity.infrastructure.security.AuthCookieWriter;
 import com.milestoneflow.shared.api.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.MDC;
@@ -28,6 +34,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Authentication", description = "Token refresh and rotation")
 public class AuthRefreshController {
 
     private final RefreshTokenUseCase refreshTokenUseCase;
@@ -47,6 +54,18 @@ public class AuthRefreshController {
      *
      * <p>Reads MF_REFRESH cookie only. No body, no query params, no headers.
      */
+    @Operation(summary = "Refresh access token",
+            description = "Reads the MF_REFRESH HttpOnly cookie and rotates both "
+                    + "access and refresh tokens. Sets new MF_ACCESS and MF_REFRESH cookies. "
+                    + "Replay of a previously-used refresh token revokes the entire session family.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Tokens rotated — new cookies set"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Refresh token missing, invalid, expired, or reused",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @SecurityRequirements
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<Map<String, Object>>> refresh(HttpServletRequest request) {
         // 1. Read refresh token from cookie
