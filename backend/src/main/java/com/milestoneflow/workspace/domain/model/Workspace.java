@@ -83,6 +83,7 @@ public class Workspace extends AuditedEntity {
         this.defaultCurrency = Objects.requireNonNull(defaultCurrency, "defaultCurrency must not be null");
         this.timezone = Objects.requireNonNull(timezone, "timezone must not be null");
         this.status = Objects.requireNonNull(status, "status must not be null");
+        this.settings = Map.of();
     }
 
     /**
