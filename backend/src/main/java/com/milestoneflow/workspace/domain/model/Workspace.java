@@ -42,7 +42,8 @@ public class Workspace extends AuditedEntity {
     @Column(name = "slug", nullable = false, length = 80, unique = true)
     private String slug;
 
-    @Column(name = "default_currency", nullable = false, length = 3, columnDefinition = "char(3)")
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "default_currency", nullable = false, length = 3)
     private String defaultCurrency;
 
     @Column(name = "timezone", nullable = false, length = 64)
