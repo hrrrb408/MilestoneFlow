@@ -2,9 +2,13 @@ package com.milestoneflow.identity.application.service;
 
 import com.milestoneflow.identity.application.command.LoginCommand;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
+import static org.mockito.Mockito.lenient;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
 import com.milestoneflow.identity.application.result.LoginResult;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.EmailNotVerifiedException;
@@ -50,6 +54,8 @@ class LoginServiceTest {
     @Mock private TokenHasher tokenHasher;
     @Mock private IdGenerator idGenerator;
     @Mock private Clock clock;
+    @Mock private AuthAuditWriter auditWriter;
+    @Mock private AuthRateLimiter rateLimiter;
 
     @Captor private ArgumentCaptor<AuthSession> sessionCaptor;
     @Captor private ArgumentCaptor<AppUser> userCaptor;
@@ -69,7 +75,10 @@ class LoginServiceTest {
     void setUp() {
         var tokenProperties = new AuthTokenProperties(Duration.ofMinutes(15), Duration.ofDays(30));
         loginService = new LoginService(userRepository, authSessionRepository, passwordEncoder,
-                tokenGenerator, tokenHasher, idGenerator, clock, tokenProperties);
+                tokenGenerator, tokenHasher, idGenerator, clock, tokenProperties, auditWriter, rateLimiter);
+        lenient().when(rateLimiter.check(any(), anyString())).thenReturn(RateLimitDecision.allowed(100));
+        // Rate limiter uses tokenHasher.hash(normalizedEmail) for the rate limit key
+        lenient().when(tokenHasher.hash("user@example.com")).thenReturn("rl-hash-1234");
     }
 
     private AppUser createActiveUser() {
@@ -298,7 +307,7 @@ class LoginServiceTest {
             assertThatThrownBy(() -> loginService.login(new LoginCommand("user@example.com", "wrong")))
                     .isInstanceOf(InvalidCredentialsException.class);
 
-            verifyNoInteractions(authSessionRepository, tokenGenerator, tokenHasher, idGenerator);
+            verifyNoInteractions(authSessionRepository, tokenGenerator, idGenerator);
         }
 
         @Test

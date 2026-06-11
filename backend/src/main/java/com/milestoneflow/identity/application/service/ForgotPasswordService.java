@@ -4,9 +4,13 @@ import com.milestoneflow.identity.application.command.ForgotPasswordCommand;
 import com.milestoneflow.identity.application.event.PasswordResetRequestedEvent;
 import com.milestoneflow.identity.application.port.in.ForgotPasswordUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.AuthRateLimitAction;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
 import com.milestoneflow.identity.domain.model.AppUser;
 import com.milestoneflow.identity.domain.model.VerificationToken;
 import com.milestoneflow.identity.domain.policy.EmailNormalizationResult;
@@ -16,6 +20,7 @@ import com.milestoneflow.identity.infrastructure.config.PasswordResetProperties;
 import com.milestoneflow.shared.id.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +63,8 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
     private final Clock clock;
     private final PasswordResetProperties passwordResetProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuthAuditWriter auditWriter;
+    private final AuthRateLimiter rateLimiter;
 
     public ForgotPasswordService(AppUserRepository userRepository,
                                  VerificationTokenRepository verificationTokenRepository,
@@ -66,7 +73,9 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
                                  IdGenerator idGenerator,
                                  Clock clock,
                                  PasswordResetProperties passwordResetProperties,
-                                 ApplicationEventPublisher eventPublisher) {
+                                 ApplicationEventPublisher eventPublisher,
+                                 AuthAuditWriter auditWriter,
+                                 AuthRateLimiter rateLimiter) {
         this.userRepository = userRepository;
         this.verificationTokenRepository = verificationTokenRepository;
         this.tokenGenerator = tokenGenerator;
@@ -75,6 +84,8 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
         this.clock = clock;
         this.passwordResetProperties = passwordResetProperties;
         this.eventPublisher = eventPublisher;
+        this.auditWriter = auditWriter;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -82,6 +93,14 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
     public void forgotPassword(ForgotPasswordCommand command) {
         // 1. Normalize email
         EmailNormalizationResult emailResult = EmailNormalizationResult.normalize(command.getEmail());
+
+        // 1b. Rate limit check
+        String rateLimitKey = "forgot:" + tokenHasher.hash(emailResult.normalizedEmail());
+        RateLimitDecision limitDecision = rateLimiter.check(AuthRateLimitAction.FORGOT_PASSWORD, rateLimitKey);
+        if (!limitDecision.allowed()) {
+            // Per anti-enumeration: return silently as if request succeeded
+            return;
+        }
 
         // 2. Find user — no error if not found (anti-enumeration)
         Optional<AppUser> userOpt = userRepository.findByEmailNormalized(emailResult.normalizedEmail());
@@ -120,5 +139,7 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
         eventPublisher.publishEvent(event);
 
         log.info("Password reset token created: userId={}", user.getId());
+
+        auditWriter.writeUserEvent("AUTH_PASSWORD_RESET_REQUESTED", user.getId(), "app_user", user.getId(), MDC.get("requestId"), "Password reset requested", null);
     }
 }

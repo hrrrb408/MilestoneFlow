@@ -4,9 +4,14 @@ import com.milestoneflow.identity.application.command.RegisterUserCommand;
 import com.milestoneflow.identity.application.event.EmailVerificationRequestedEvent;
 import com.milestoneflow.identity.application.port.in.RegisterUserUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
+import com.milestoneflow.identity.application.port.out.AuthRateLimiter;
 import com.milestoneflow.identity.application.port.out.SecureTokenGenerator;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
+import com.milestoneflow.identity.application.ratelimit.AuthRateLimitAction;
+import com.milestoneflow.identity.application.ratelimit.RateLimitDecision;
+import com.milestoneflow.identity.application.exception.AuthRateLimitedException;
 import com.milestoneflow.identity.application.result.RegistrationResult;
 import com.milestoneflow.identity.domain.exception.EmailAlreadyExistsException;
 import com.milestoneflow.identity.domain.model.AppUser;
@@ -18,6 +23,7 @@ import com.milestoneflow.identity.infrastructure.config.EmailVerificationPropert
 import com.milestoneflow.shared.id.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -59,6 +65,8 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final Clock clock;
     private final EmailVerificationProperties properties;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuthAuditWriter auditWriter;
+    private final AuthRateLimiter rateLimiter;
 
     public RegisterUserService(AppUserRepository userRepository,
                                VerificationTokenRepository tokenRepository,
@@ -68,7 +76,9 @@ public class RegisterUserService implements RegisterUserUseCase {
                                IdGenerator idGenerator,
                                Clock clock,
                                EmailVerificationProperties properties,
-                               ApplicationEventPublisher eventPublisher) {
+                               ApplicationEventPublisher eventPublisher,
+                               AuthAuditWriter auditWriter,
+                               AuthRateLimiter rateLimiter) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -78,6 +88,8 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.clock = clock;
         this.properties = properties;
         this.eventPublisher = eventPublisher;
+        this.auditWriter = auditWriter;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -85,6 +97,13 @@ public class RegisterUserService implements RegisterUserUseCase {
     public RegistrationResult register(RegisterUserCommand command) {
         // 1. Normalize email
         EmailNormalizationResult emailResult = EmailNormalizationResult.normalize(command.getEmail());
+
+        // 1b. Rate limit check — key is derived from email (masked)
+        String registerKey = "reg:" + tokenHasher.hash(emailResult.normalizedEmail());
+        RateLimitDecision limitDecision = rateLimiter.check(AuthRateLimitAction.REGISTER, registerKey);
+        if (!limitDecision.allowed()) {
+            throw new AuthRateLimitedException();
+        }
 
         // 2. Validate password policy
         PasswordPolicy.validate(command.getPassword());
@@ -130,6 +149,10 @@ public class RegisterUserService implements RegisterUserUseCase {
         tokenRepository.save(verificationToken);
 
         log.info("Registration completed userId={}", userId);
+
+        auditWriter.writeUserEvent("AUTH_REGISTER_SUCCEEDED", userId,
+                "app_user", userId, MDC.get("requestId"),
+                "User registered", null);
 
         // 9. Publish event for AFTER_COMMIT email delivery
         eventPublisher.publishEvent(new EmailVerificationRequestedEvent(

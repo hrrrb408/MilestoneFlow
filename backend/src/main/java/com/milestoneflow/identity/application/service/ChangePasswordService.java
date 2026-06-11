@@ -3,6 +3,7 @@ package com.milestoneflow.identity.application.service;
 import com.milestoneflow.identity.application.command.ChangePasswordCommand;
 import com.milestoneflow.identity.application.port.in.ChangePasswordUseCase;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.AuthSessionRepository;
 import com.milestoneflow.identity.domain.exception.AccountDisabledException;
 import com.milestoneflow.identity.domain.exception.InvalidCredentialsException;
@@ -12,6 +13,7 @@ import com.milestoneflow.identity.domain.type.AuthSessionRevokeReason;
 import com.milestoneflow.identity.domain.type.UserStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,15 +44,18 @@ public class ChangePasswordService implements ChangePasswordUseCase {
     private final AuthSessionRepository authSessionRepository;
     private final PasswordEncoder passwordEncoder;
     private final Clock clock;
+    private final AuthAuditWriter auditWriter;
 
     public ChangePasswordService(AppUserRepository userRepository,
                                  AuthSessionRepository authSessionRepository,
                                  PasswordEncoder passwordEncoder,
-                                 Clock clock) {
+                                 Clock clock,
+                                 AuthAuditWriter auditWriter) {
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
         this.passwordEncoder = passwordEncoder;
         this.clock = clock;
+        this.auditWriter = auditWriter;
     }
 
     @Override
@@ -88,5 +93,7 @@ public class ChangePasswordService implements ChangePasswordUseCase {
         authSessionRepository.revokeAllByUserId(user.getId(), now, AuthSessionRevokeReason.PASSWORD_CHANGE);
 
         log.info("Password changed successfully: userId={}", user.getId());
+
+        auditWriter.writeUserEvent("AUTH_PASSWORD_CHANGED", user.getId(), "app_user", user.getId(), MDC.get("requestId"), "Password changed", null);
     }
 }

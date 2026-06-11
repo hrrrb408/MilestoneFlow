@@ -2,6 +2,7 @@ package com.milestoneflow.identity.application.service;
 
 import com.milestoneflow.identity.application.command.ConfirmEmailVerificationCommand;
 import com.milestoneflow.identity.application.port.out.AppUserRepository;
+import com.milestoneflow.identity.application.port.out.AuthAuditWriter;
 import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.application.port.out.VerificationTokenRepository;
 import com.milestoneflow.identity.application.result.EmailVerificationResult;
@@ -37,6 +38,7 @@ class ConfirmEmailVerificationServiceTest {
     private AppUserRepository userRepository;
     private TokenHasher tokenHasher;
     private Clock clock;
+    private AuthAuditWriter auditWriter;
     private ConfirmEmailVerificationService service;
 
     @BeforeEach
@@ -45,7 +47,8 @@ class ConfirmEmailVerificationServiceTest {
         userRepository = mock(AppUserRepository.class);
         tokenHasher = mock(TokenHasher.class);
         clock = Clock.fixed(Instant.parse("2025-01-01T12:00:00Z"), java.time.ZoneOffset.UTC);
-        service = new ConfirmEmailVerificationService(tokenRepository, userRepository, tokenHasher, clock);
+        auditWriter = mock(AuthAuditWriter.class);
+        service = new ConfirmEmailVerificationService(tokenRepository, userRepository, tokenHasher, clock, auditWriter);
     }
 
     @Nested
