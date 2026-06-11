@@ -11,7 +11,6 @@ import com.milestoneflow.workspace.application.port.out.WorkspaceRepository;
 import com.milestoneflow.workspace.application.result.WorkspaceResult;
 import com.milestoneflow.workspace.domain.exception.WorkspaceAlreadyExistsForUserException;
 import com.milestoneflow.workspace.domain.exception.WorkspaceSlugAlreadyExistsException;
-import com.milestoneflow.workspace.domain.type.WorkspaceMembershipRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -92,7 +91,7 @@ class CreateWorkspaceServiceTest {
             assertThat(result.status()).isEqualTo("ACTIVE");
             assertThat(result.timezone()).isEqualTo("Asia/Taipei");
             assertThat(result.defaultCurrency()).isEqualTo("TWD");
-            assertThat(result.role()).isEqualTo(WorkspaceMembershipRole.OWNER);
+            assertThat(result.role()).isEqualTo("OWNER");
         }
 
         @Test

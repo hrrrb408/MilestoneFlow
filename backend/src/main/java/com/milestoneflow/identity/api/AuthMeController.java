@@ -3,7 +3,7 @@ package com.milestoneflow.identity.api;
 import com.milestoneflow.identity.api.response.CurrentUserResponse;
 import com.milestoneflow.identity.application.port.in.GetCurrentUserUseCase;
 import com.milestoneflow.identity.application.result.CurrentUserResult;
-import com.milestoneflow.identity.infrastructure.security.CurrentUserPrincipal;
+import com.milestoneflow.shared.infrastructure.security.CurrentUserPrincipal;
 import com.milestoneflow.shared.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

@@ -81,7 +81,7 @@ public class UpdateWorkspaceService implements UpdateWorkspaceUseCase {
                 workspace.getStatus().name(),
                 workspace.getTimezone(),
                 workspace.getDefaultCurrency(),
-                membership.getRole(),
+                membership.getRole().name(),
                 workspace.getCreatedAt()
         );
     }

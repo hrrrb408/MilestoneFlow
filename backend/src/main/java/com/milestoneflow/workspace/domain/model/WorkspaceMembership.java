@@ -1,6 +1,6 @@
 package com.milestoneflow.workspace.domain.model;
 
-import com.milestoneflow.shared.persistence.AuditedEntity;
+import com.milestoneflow.shared.persistence.TimestampedEntity;
 import com.milestoneflow.workspace.domain.type.WorkspaceMembershipRole;
 import com.milestoneflow.workspace.domain.type.WorkspaceMembershipStatus;
 import jakarta.persistence.Column;
@@ -9,6 +9,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -27,11 +28,11 @@ import java.util.UUID;
  * {@code uk_workspace_membership_active_user} ensures one active membership
  * per user in V0.1.
  *
- * @see com.milestoneflow.shared.persistence.AuditedEntity
+ * @see com.milestoneflow.shared.persistence.TimestampedEntity
  */
 @Entity
 @Table(name = "workspace_membership")
-public class WorkspaceMembership extends AuditedEntity {
+public class WorkspaceMembership extends TimestampedEntity {
 
     @Column(name = "workspace_id", nullable = false)
     private UUID workspaceId;
@@ -56,6 +57,10 @@ public class WorkspaceMembership extends AuditedEntity {
     @Version
     @Column(name = "version", nullable = false)
     private long version;
+
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 
     // ── Constructors ─────────────────────────────────────────────────────
 

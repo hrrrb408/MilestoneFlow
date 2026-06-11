@@ -136,7 +136,7 @@ public class CreateWorkspaceService implements CreateWorkspaceUseCase {
                 workspace.getStatus().name(),
                 workspace.getTimezone(),
                 workspace.getDefaultCurrency(),
-                membership.getRole(),
+                membership.getRole().name(),
                 workspace.getCreatedAt()
         );
     }

@@ -6,6 +6,7 @@ import com.milestoneflow.identity.application.port.out.TokenHasher;
 import com.milestoneflow.identity.domain.model.AppUser;
 import com.milestoneflow.identity.domain.model.AuthSession;
 import com.milestoneflow.identity.infrastructure.config.AuthCookieProperties;
+import com.milestoneflow.shared.infrastructure.security.CurrentUserPrincipal;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

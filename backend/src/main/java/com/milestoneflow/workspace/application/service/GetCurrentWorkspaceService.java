@@ -48,7 +48,7 @@ public class GetCurrentWorkspaceService implements GetCurrentWorkspaceUseCase {
                 workspace.getStatus().name(),
                 workspace.getTimezone(),
                 workspace.getDefaultCurrency(),
-                m.getRole(),
+                m.getRole().name(),
                 workspace.getCreatedAt()
         ));
     }

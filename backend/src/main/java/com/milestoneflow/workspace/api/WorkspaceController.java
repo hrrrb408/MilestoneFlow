@@ -1,6 +1,6 @@
 package com.milestoneflow.workspace.api;
 
-import com.milestoneflow.identity.infrastructure.security.CurrentUserPrincipal;
+import com.milestoneflow.shared.infrastructure.security.CurrentUserPrincipal;
 import com.milestoneflow.shared.api.ApiResponse;
 import com.milestoneflow.workspace.api.dto.CreateWorkspaceRequest;
 import com.milestoneflow.workspace.api.dto.UpdateWorkspaceRequest;
@@ -196,7 +196,7 @@ public class WorkspaceController {
                 result.status(),
                 result.timezone(),
                 result.defaultCurrency(),
-                result.role().name(),
+                result.role(),
                 result.createdAt().toString()
         );
     }

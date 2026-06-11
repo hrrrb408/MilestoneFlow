@@ -8,6 +8,7 @@ import com.milestoneflow.identity.domain.model.AuthSession;
 import com.milestoneflow.identity.domain.type.AuthSessionStatus;
 import com.milestoneflow.identity.domain.type.UserStatus;
 import com.milestoneflow.identity.infrastructure.config.AuthCookieProperties;
+import com.milestoneflow.shared.infrastructure.security.CurrentUserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

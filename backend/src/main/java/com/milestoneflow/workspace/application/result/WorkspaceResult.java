@@ -1,7 +1,5 @@
 package com.milestoneflow.workspace.application.result;
 
-import com.milestoneflow.workspace.domain.type.WorkspaceMembershipRole;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,7 +15,7 @@ import java.util.UUID;
  * @param status          workspace status (e.g., "ACTIVE")
  * @param timezone        IANA timezone ID
  * @param defaultCurrency 3-letter currency code
- * @param role            current user's membership role
+ * @param role            current user's membership role (e.g., "OWNER")
  * @param createdAt       workspace creation timestamp
  */
 public record WorkspaceResult(
@@ -27,7 +25,7 @@ public record WorkspaceResult(
         String status,
         String timezone,
         String defaultCurrency,
-        WorkspaceMembershipRole role,
+        String role,
         Instant createdAt
 ) {
 }
