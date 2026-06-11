@@ -88,14 +88,21 @@ class WorkspaceSecurityIT extends AbstractIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add("Cookie", accessCookie);
 
-        // Get CSRF token
+        // Get CSRF token — trigger generation via GET request
         ResponseEntity<Void> csrfResponse = restTemplate.exchange(
                 "/auth/me", HttpMethod.GET, new HttpEntity<>(headers), Void.class);
-        String csrfCookie = csrfResponse.getHeaders().getFirst("Set-Cookie");
-        if (csrfCookie != null) {
-            String csrfToken = csrfCookie.split("XSRF-TOKEN=")[1].split(";")[0];
-            headers.add("X-XSRF-TOKEN", csrfToken);
-            headers.add("Cookie", csrfCookie);
+
+        var setCookies = csrfResponse.getHeaders().get("Set-Cookie");
+        if (setCookies != null) {
+            String xsrfCookie = setCookies.stream()
+                    .filter(c -> c.startsWith("XSRF-TOKEN="))
+                    .findFirst()
+                    .orElse(null);
+            if (xsrfCookie != null) {
+                String csrfToken = xsrfCookie.split("XSRF-TOKEN=")[1].split(";")[0];
+                headers.add("X-XSRF-TOKEN", csrfToken);
+                headers.add("Cookie", xsrfCookie.split(";")[0]);
+            }
         }
         return headers;
     }

@@ -21,11 +21,7 @@ class WorkspaceConstraintIT extends AbstractIntegrationTest {
     @AfterEach
     void tearDown() {
         jdbc.update("DELETE FROM workspace_membership");
-        jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");
-        jdbc.update("DELETE FROM audit_event");
-        jdbc.update("ALTER TABLE audit_event ENABLE TRIGGER ALL");
         jdbc.update("DELETE FROM workspace");
-        jdbc.update("DELETE FROM app_user WHERE email_normalized LIKE '%test.com' OR email_normalized LIKE '%test%'");
     }
 
     // ── workspace.slug unique constraint ─────────────────────────────────

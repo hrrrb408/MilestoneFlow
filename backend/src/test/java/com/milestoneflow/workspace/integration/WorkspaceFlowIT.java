@@ -88,14 +88,23 @@ class WorkspaceFlowIT extends AbstractIntegrationTest {
         if (accessToken != null) {
             headers.add("Cookie", accessToken);
         }
-        // Get CSRF token
+
+        // Get CSRF token — trigger CSRF token generation via a GET request
         ResponseEntity<Void> csrfResponse = restTemplate.exchange(
                 "/auth/me", HttpMethod.GET, new HttpEntity<>(authHeadersOnly()), Void.class);
-        String csrfCookie = csrfResponse.getHeaders().getFirst("Set-Cookie");
-        if (csrfCookie != null) {
-            String csrfToken = csrfCookie.split("XSRF-TOKEN=")[1].split(";")[0];
-            headers.add("X-XSRF-TOKEN", csrfToken);
-            headers.add("Cookie", csrfCookie);
+
+        // Search for XSRF-TOKEN cookie among all Set-Cookie headers
+        var setCookies = csrfResponse.getHeaders().get("Set-Cookie");
+        if (setCookies != null) {
+            String xsrfCookie = setCookies.stream()
+                    .filter(c -> c.startsWith("XSRF-TOKEN="))
+                    .findFirst()
+                    .orElse(null);
+            if (xsrfCookie != null) {
+                String csrfToken = xsrfCookie.split("XSRF-TOKEN=")[1].split(";")[0];
+                headers.add("X-XSRF-TOKEN", csrfToken);
+                headers.add("Cookie", xsrfCookie.split(";")[0]);
+            }
         }
         return headers;
     }

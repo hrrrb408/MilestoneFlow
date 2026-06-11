@@ -59,12 +59,16 @@ class WorkspaceAuditIT extends AbstractIntegrationTest {
         csrfHeaders.add("Cookie", accessToken);
         ResponseEntity<Void> csrfResponse = restTemplate.exchange(
                 "/auth/me", HttpMethod.GET, new HttpEntity<>(csrfHeaders), Void.class);
-        String csrfCookie = csrfResponse.getHeaders().getFirst("Set-Cookie");
-        String csrfToken = csrfCookie != null ? csrfCookie.split("XSRF-TOKEN=")[1].split(";")[0] : "";
+
+        var csrfSetCookies = csrfResponse.getHeaders().get("Set-Cookie");
+        String xsrfCookie = csrfSetCookies != null
+                ? csrfSetCookies.stream().filter(c -> c.startsWith("XSRF-TOKEN=")).findFirst().orElse(null)
+                : null;
+        String csrfToken = xsrfCookie != null ? xsrfCookie.split("XSRF-TOKEN=")[1].split(";")[0] : "";
 
         // Store auth context for tests
         System.setProperty("test.cookie.access", accessToken != null ? accessToken : "");
-        System.setProperty("test.cookie.csrf", csrfCookie != null ? csrfCookie : "");
+        System.setProperty("test.cookie.csrf", xsrfCookie != null ? xsrfCookie.split(";")[0] : "");
         System.setProperty("test.csrf.token", csrfToken);
     }
 
