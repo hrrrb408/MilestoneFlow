@@ -107,6 +107,17 @@ class OpenApiDocumentationIT {
             String paths = docs.get("paths").toPrettyString();
             assertThat(paths).contains("/auth/refresh");
         }
+
+        @Test
+        @DisplayName("includes workspace endpoints")
+        void includesWorkspacePaths() throws Exception {
+            JsonNode docs = getApiDocs();
+            String paths = docs.get("paths").toPrettyString();
+
+            assertThat(paths).contains("/workspaces");
+            assertThat(paths).contains("/workspaces/current");
+            assertThat(paths).contains("/workspaces/{workspaceId}");
+        }
     }
 
     @Nested
