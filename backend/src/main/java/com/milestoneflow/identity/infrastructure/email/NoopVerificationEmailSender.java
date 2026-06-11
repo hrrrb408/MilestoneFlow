@@ -19,19 +19,16 @@ import java.util.Locale;
  * <p>Only activated when both conditions are met:
  * <ul>
  *   <li>Active Spring profile is {@code local} or {@code test}</li>
- *   <li>Configuration property {@code milestoneflow.email.provider} is set to {@code noop}</li>
+ *   <li>Configuration property {@code milestoneflow.mail.provider} is set to {@code noop}</li>
  * </ul>
  *
  * <p>In production, neither condition is met, so no {@link VerificationEmailSender}
  * bean exists. This causes the application context to fail at startup (fail-closed),
  * preventing registration without a real email sender.
- *
- * <p><strong>Release Blocker:</strong> A real {@link VerificationEmailSender}
- * implementation is required before production deployment.
  */
 @Component
 @Profile({"local", "test"})
-@ConditionalOnProperty(name = "milestoneflow.email.provider", havingValue = "noop")
+@ConditionalOnProperty(name = "milestoneflow.mail.provider", havingValue = "noop")
 public class NoopVerificationEmailSender implements VerificationEmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(NoopVerificationEmailSender.class);
