@@ -33,7 +33,7 @@ public class WorkspaceRepositoryAdapter implements WorkspaceRepository {
     @Override
     public Workspace save(Workspace workspace) {
         try {
-            return delegate.save(workspace);
+            return delegate.saveAndFlush(workspace);
         } catch (DataIntegrityViolationException ex) {
             if (isSlugConstraintViolation(ex)) {
                 throw new WorkspaceSlugAlreadyExistsException();

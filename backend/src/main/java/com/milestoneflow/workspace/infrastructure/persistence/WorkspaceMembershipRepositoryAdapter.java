@@ -25,7 +25,7 @@ public class WorkspaceMembershipRepositoryAdapter implements WorkspaceMembership
 
     @Override
     public WorkspaceMembership save(WorkspaceMembership membership) {
-        return delegate.save(membership);
+        return delegate.saveAndFlush(membership);
     }
 
     @Override
