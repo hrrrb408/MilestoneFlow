@@ -109,6 +109,7 @@ public class CreateMilestoneService implements CreateMilestoneUseCase {
                 milestone.getDescription(),
                 milestone.getStatus().name(),
                 milestone.getDueDate(),
+                milestone.getCompletedAt(),
                 milestone.getCreatedAt(),
                 milestone.getUpdatedAt()
         );

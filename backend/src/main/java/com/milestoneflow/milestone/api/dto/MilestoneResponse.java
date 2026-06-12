@@ -9,7 +9,7 @@ import java.time.LocalDate;
  * Response DTO for a single milestone.
  *
  * <p>Does not expose internal auditing fields (createdBy, updatedBy),
- * version, settings, completedAt, completedBy.
+ * version, settings, completedBy.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Milestone response")
@@ -35,6 +35,9 @@ public record MilestoneResponse(
 
         @Schema(description = "Target completion date", example = "2026-07-01")
         LocalDate dueDate,
+
+        @Schema(description = "Completion timestamp (set when status is COMPLETED)")
+        String completedAt,
 
         @Schema(description = "Creation timestamp")
         String createdAt,
