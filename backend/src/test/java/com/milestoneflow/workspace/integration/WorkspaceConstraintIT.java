@@ -20,6 +20,7 @@ class WorkspaceConstraintIT extends AbstractIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        jdbc.update("DELETE FROM task");
         jdbc.update("DELETE FROM milestone");
         jdbc.update("DELETE FROM project");
         jdbc.update("DELETE FROM workspace_membership");
