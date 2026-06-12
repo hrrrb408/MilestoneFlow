@@ -1,10 +1,13 @@
 package com.milestoneflow.project.domain.model;
 
+import com.milestoneflow.project.domain.exception.ProjectArchivedException;
+import com.milestoneflow.project.domain.exception.ProjectNotArchivedException;
 import com.milestoneflow.project.domain.type.ProjectStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -37,6 +40,8 @@ class ProjectTest {
             assertThat(project.getStatus()).isEqualTo(ProjectStatus.ACTIVE);
             assertThat(project.getStartDate()).isEqualTo(LocalDate.of(2026, 6, 1));
             assertThat(project.getTargetDate()).isEqualTo(LocalDate.of(2026, 7, 1));
+            assertThat(project.getArchivedAt()).isNull();
+            assertThat(project.getArchivedBy()).isNull();
         }
 
         @Test
@@ -63,6 +68,97 @@ class ProjectTest {
             assertThatThrownBy(() -> Project.create(ID, WORKSPACE_ID, null, null, null, null))
                     .isInstanceOf(NullPointerException.class)
                     .hasMessageContaining("name");
+        }
+    }
+
+    @Nested
+    @DisplayName("archive")
+    class Archive {
+
+        @Test
+        @DisplayName("should archive ACTIVE project")
+        void shouldArchiveActiveProject() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Test", null, null, null);
+            UUID actorId = UUID.randomUUID();
+            Instant archivedAt = Instant.now();
+
+            project.archive(actorId, archivedAt);
+
+            assertThat(project.getStatus()).isEqualTo(ProjectStatus.ARCHIVED);
+            assertThat(project.getArchivedAt()).isEqualTo(archivedAt);
+            assertThat(project.getArchivedBy()).isEqualTo(actorId);
+            assertThat(project.isArchived()).isTrue();
+        }
+
+        @Test
+        @DisplayName("should reject archiving already ARCHIVED project")
+        void shouldRejectDoubleArchive() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Test", null, null, null);
+            project.archive(UUID.randomUUID(), Instant.now());
+
+            assertThatThrownBy(() -> project.archive(UUID.randomUUID(), Instant.now()))
+                    .isInstanceOf(ProjectArchivedException.class);
+        }
+
+        @Test
+        @DisplayName("should reject null actorId")
+        void shouldRejectNullActorId() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Test", null, null, null);
+
+            assertThatThrownBy(() -> project.archive(null, Instant.now()))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("actorId");
+        }
+
+        @Test
+        @DisplayName("should reject null archivedAt")
+        void shouldRejectNullArchivedAt() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Test", null, null, null);
+
+            assertThatThrownBy(() -> project.archive(UUID.randomUUID(), null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("archivedAt");
+        }
+    }
+
+    @Nested
+    @DisplayName("restore")
+    class Restore {
+
+        @Test
+        @DisplayName("should restore ARCHIVED project")
+        void shouldRestoreArchivedProject() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Test", null, null, null);
+            project.archive(UUID.randomUUID(), Instant.now());
+
+            project.restore();
+
+            assertThat(project.getStatus()).isEqualTo(ProjectStatus.ACTIVE);
+            assertThat(project.getArchivedAt()).isNull();
+            assertThat(project.getArchivedBy()).isNull();
+            assertThat(project.isArchived()).isFalse();
+        }
+
+        @Test
+        @DisplayName("should reject restoring ACTIVE project")
+        void shouldRejectRestoreActive() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Test", null, null, null);
+
+            assertThatThrownBy(project::restore)
+                    .isInstanceOf(ProjectNotArchivedException.class);
+        }
+
+        @Test
+        @DisplayName("should allow archive after restore")
+        void shouldAllowArchiveAfterRestore() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Test", null, null, null);
+            UUID actor = UUID.randomUUID();
+            project.archive(actor, Instant.now());
+            project.restore();
+
+            // Archive again should work
+            project.archive(actor, Instant.now());
+            assertThat(project.getStatus()).isEqualTo(ProjectStatus.ARCHIVED);
         }
     }
 
@@ -95,6 +191,36 @@ class ProjectTest {
 
             assertThat(project.getName()).isEqualTo("Original");
             assertThat(project.getDescription()).isEqualTo("desc");
+        }
+
+        @Test
+        @DisplayName("should reject update on ARCHIVED project")
+        void shouldRejectUpdateOnArchived() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Original", "desc", null, null);
+            project.archive(UUID.randomUUID(), Instant.now());
+
+            assertThatThrownBy(() -> project.updateBasicInfo("New", null, null, null))
+                    .isInstanceOf(ProjectArchivedException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("isArchived")
+    class IsArchived {
+
+        @Test
+        @DisplayName("should return false for ACTIVE project")
+        void shouldReturnFalseForActive() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Test", null, null, null);
+            assertThat(project.isArchived()).isFalse();
+        }
+
+        @Test
+        @DisplayName("should return true for ARCHIVED project")
+        void shouldReturnTrueForArchived() {
+            Project project = Project.create(ID, WORKSPACE_ID, "Test", null, null, null);
+            project.archive(UUID.randomUUID(), Instant.now());
+            assertThat(project.isArchived()).isTrue();
         }
     }
 
