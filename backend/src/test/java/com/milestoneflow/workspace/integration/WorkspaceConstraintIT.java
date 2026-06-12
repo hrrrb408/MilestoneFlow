@@ -20,6 +20,7 @@ class WorkspaceConstraintIT extends AbstractIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        jdbc.update("DELETE FROM project");
         jdbc.update("DELETE FROM workspace_membership");
         jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");
         jdbc.update("DELETE FROM audit_event");
