@@ -135,13 +135,13 @@ class MilestoneAuditIT extends AbstractIntegrationTest {
 
         // Verify audit event
         List<Map<String, Object>> events = jdbc.queryForList(
-                "SELECT event_type, target_type, target_id, workspace_id, actor_id, actor_type " +
-                        "FROM audit_event WHERE event_type = 'MILESTONE_CREATED' AND actor_id = ?::uuid",
+                "SELECT action, target_type, target_id, workspace_id, actor_id, actor_type " +
+                        "FROM audit_event WHERE action = 'MILESTONE_CREATED' AND actor_id = ?::uuid",
                 userId);
 
         assertThat(events).hasSize(1);
         Map<String, Object> event = events.get(0);
-        assertThat(event.get("event_type")).isEqualTo("MILESTONE_CREATED");
+        assertThat(event.get("action")).isEqualTo("MILESTONE_CREATED");
         assertThat(event.get("target_type")).isEqualTo("MILESTONE");
         assertThat(event.get("workspace_id")).isEqualTo(UUID.fromString(workspaceId));
         assertThat(event.get("actor_id")).isEqualTo(userId);
@@ -173,13 +173,13 @@ class MilestoneAuditIT extends AbstractIntegrationTest {
 
         // Verify audit event
         List<Map<String, Object>> events = jdbc.queryForList(
-                "SELECT event_type, target_type, target_id, workspace_id, actor_id " +
-                        "FROM audit_event WHERE event_type = 'MILESTONE_UPDATED' AND actor_id = ?::uuid",
+                "SELECT action, target_type, target_id, workspace_id, actor_id " +
+                        "FROM audit_event WHERE action = 'MILESTONE_UPDATED' AND actor_id = ?::uuid",
                 userId);
 
         assertThat(events).hasSize(1);
         Map<String, Object> event = events.get(0);
-        assertThat(event.get("event_type")).isEqualTo("MILESTONE_UPDATED");
+        assertThat(event.get("action")).isEqualTo("MILESTONE_UPDATED");
         assertThat(event.get("target_type")).isEqualTo("MILESTONE");
         assertThat(event.get("target_id")).isEqualTo(UUID.fromString(milestoneId));
     }

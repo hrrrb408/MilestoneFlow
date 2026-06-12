@@ -197,12 +197,12 @@ class SchemaAlignmentMigrationIT {
             );
             assertThat(uniqueIdxCount).isEqualTo(1);
 
-            // Step 9: Verify Flyway history — all 8 migrations applied successfully (V001–V008)
+            // Step 9: Verify Flyway history — all 9 migrations applied successfully (V001–V009)
             Integer totalMigrations = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM " + SCHEMA + ".flyway_schema_history WHERE success = true",
                     Integer.class
             );
-            assertThat(totalMigrations).isEqualTo(8);
+            assertThat(totalMigrations).isEqualTo(9);
 
             // Step 10: Verify no failed migrations
             Integer failedMigrations = jdbc.queryForObject(
