@@ -6,9 +6,11 @@ import com.milestoneflow.milestone.api.dto.MilestoneResponse;
 import com.milestoneflow.milestone.api.dto.UpdateMilestoneRequest;
 import com.milestoneflow.milestone.application.command.CreateMilestoneCommand;
 import com.milestoneflow.milestone.application.command.UpdateMilestoneCommand;
+import com.milestoneflow.milestone.application.port.in.CompleteMilestoneUseCase;
 import com.milestoneflow.milestone.application.port.in.CreateMilestoneUseCase;
 import com.milestoneflow.milestone.application.port.in.GetMilestoneUseCase;
 import com.milestoneflow.milestone.application.port.in.ListMilestonesUseCase;
+import com.milestoneflow.milestone.application.port.in.ReopenMilestoneUseCase;
 import com.milestoneflow.milestone.application.port.in.UpdateMilestoneUseCase;
 import com.milestoneflow.milestone.application.result.MilestoneResult;
 import com.milestoneflow.shared.api.ApiResponse;
@@ -56,15 +58,21 @@ public class MilestoneController {
     private final ListMilestonesUseCase listMilestonesUseCase;
     private final GetMilestoneUseCase getMilestoneUseCase;
     private final UpdateMilestoneUseCase updateMilestoneUseCase;
+    private final CompleteMilestoneUseCase completeMilestoneUseCase;
+    private final ReopenMilestoneUseCase reopenMilestoneUseCase;
 
     public MilestoneController(CreateMilestoneUseCase createMilestoneUseCase,
                                ListMilestonesUseCase listMilestonesUseCase,
                                GetMilestoneUseCase getMilestoneUseCase,
-                               UpdateMilestoneUseCase updateMilestoneUseCase) {
+                               UpdateMilestoneUseCase updateMilestoneUseCase,
+                               CompleteMilestoneUseCase completeMilestoneUseCase,
+                               ReopenMilestoneUseCase reopenMilestoneUseCase) {
         this.createMilestoneUseCase = createMilestoneUseCase;
         this.listMilestonesUseCase = listMilestonesUseCase;
         this.getMilestoneUseCase = getMilestoneUseCase;
         this.updateMilestoneUseCase = updateMilestoneUseCase;
+        this.completeMilestoneUseCase = completeMilestoneUseCase;
+        this.reopenMilestoneUseCase = reopenMilestoneUseCase;
     }
 
     /**
@@ -231,6 +239,82 @@ public class MilestoneController {
         return ResponseEntity.ok(ApiResponse.of(toResponse(result), resolveRequestId()));
     }
 
+    /**
+     * Completes a milestone.
+     */
+    @Operation(summary = "Complete a milestone",
+            description = "Transitions a milestone from OPEN to COMPLETED. "
+                    + "The authenticated user must be the workspace OWNER. "
+                    + "The project must not be archived. "
+                    + "Requires CSRF token via X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Milestone completed successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Not authenticated",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    description = "Not workspace owner",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "Milestone, project, or workspace not found",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+                    description = "Milestone already completed or project is archived",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @PostMapping("/{milestoneId}/complete")
+    public ResponseEntity<ApiResponse<MilestoneResponse>> complete(
+            @AuthenticationPrincipal CurrentUserPrincipal principal,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID projectId,
+            @PathVariable UUID milestoneId) {
+
+        MilestoneResult result = completeMilestoneUseCase.complete(
+                workspaceId, projectId, milestoneId,
+                principal.userId(), resolveRequestId());
+
+        return ResponseEntity.ok(ApiResponse.of(toResponse(result), resolveRequestId()));
+    }
+
+    /**
+     * Reopens a completed milestone.
+     */
+    @Operation(summary = "Reopen a milestone",
+            description = "Transitions a milestone from COMPLETED back to OPEN. "
+                    + "The authenticated user must be the workspace OWNER. "
+                    + "The project must not be archived. "
+                    + "Requires CSRF token via X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Milestone reopened successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Not authenticated",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    description = "Not workspace owner",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "Milestone, project, or workspace not found",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+                    description = "Milestone not completed or project is archived",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @PostMapping("/{milestoneId}/reopen")
+    public ResponseEntity<ApiResponse<MilestoneResponse>> reopen(
+            @AuthenticationPrincipal CurrentUserPrincipal principal,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID projectId,
+            @PathVariable UUID milestoneId) {
+
+        MilestoneResult result = reopenMilestoneUseCase.reopen(
+                workspaceId, projectId, milestoneId,
+                principal.userId(), resolveRequestId());
+
+        return ResponseEntity.ok(ApiResponse.of(toResponse(result), resolveRequestId()));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private static MilestoneResponse toResponse(MilestoneResult result) {
@@ -242,6 +326,7 @@ public class MilestoneController {
                 result.description(),
                 result.status(),
                 result.dueDate(),
+                result.completedAt() != null ? result.completedAt().toString() : null,
                 result.createdAt() != null ? result.createdAt().toString() : null,
                 result.updatedAt() != null ? result.updatedAt().toString() : null
         );

@@ -117,15 +117,65 @@ public class Milestone extends AuditedEntity {
     // ── Domain behaviour ─────────────────────────────────────────────────
 
     /**
+     * Completes this milestone.
+     *
+     * <p>Transitions status from OPEN to COMPLETED. Sets {@code completedAt}
+     * and {@code completedBy}. Throws if already COMPLETED.
+     *
+     * @param actorId     the user performing the completion
+     * @param completedAt the completion timestamp
+     * @throws IllegalStateException if milestone is already COMPLETED
+     */
+    public void complete(UUID actorId, Instant completedAt) {
+        if (this.status == MilestoneStatus.COMPLETED) {
+            throw new IllegalStateException("Milestone is already completed");
+        }
+        this.status = MilestoneStatus.COMPLETED;
+        this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
+        this.completedBy = Objects.requireNonNull(actorId, "actorId must not be null");
+    }
+
+    /**
+     * Reopens this milestone.
+     *
+     * <p>Transitions status from COMPLETED back to OPEN. Clears
+     * {@code completedAt} and {@code completedBy}. Throws if not COMPLETED.
+     *
+     * @throws IllegalStateException if milestone is not COMPLETED
+     */
+    public void reopen() {
+        if (this.status != MilestoneStatus.COMPLETED) {
+            throw new IllegalStateException("Milestone is not completed");
+        }
+        this.status = MilestoneStatus.OPEN;
+        this.completedAt = null;
+        this.completedBy = null;
+    }
+
+    /**
+     * Returns whether this milestone is in COMPLETED status.
+     *
+     * @return true if status is COMPLETED
+     */
+    public boolean isCompleted() {
+        return this.status == MilestoneStatus.COMPLETED;
+    }
+
+    /**
      * Updates basic milestone information.
      *
      * <p>Only non-null parameters are applied; null parameters are ignored.
+     * COMPLETED milestones cannot be updated — reopen first.
      *
      * @param title       new title (nullable to skip)
      * @param description new description (nullable to skip)
      * @param dueDate     new due date (nullable to skip)
+     * @throws IllegalStateException if milestone is COMPLETED
      */
     public void updateBasicInfo(String title, String description, LocalDate dueDate) {
+        if (this.status == MilestoneStatus.COMPLETED) {
+            throw new IllegalStateException("Cannot update a completed milestone");
+        }
         if (title != null) {
             this.title = title;
         }

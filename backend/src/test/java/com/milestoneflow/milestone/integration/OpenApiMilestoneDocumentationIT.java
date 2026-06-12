@@ -154,5 +154,49 @@ class OpenApiMilestoneDocumentationIT {
             assertThat(security).isNotNull();
             assertThat(security.toString()).contains("cookieAuth");
         }
+
+        @Test
+        @DisplayName("includes POST milestone complete endpoint")
+        void includesCompleteMilestone() throws Exception {
+            JsonNode docs = getApiDocs();
+            String completePath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/complete";
+            assertThat(docs.get("paths").has(completePath)).isTrue();
+
+            JsonNode pathNode = docs.at("/paths").get(completePath);
+            assertThat(pathNode.has("post")).isTrue();
+        }
+
+        @Test
+        @DisplayName("includes POST milestone reopen endpoint")
+        void includesReopenMilestone() throws Exception {
+            JsonNode docs = getApiDocs();
+            String reopenPath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/reopen";
+            assertThat(docs.get("paths").has(reopenPath)).isTrue();
+
+            JsonNode pathNode = docs.at("/paths").get(reopenPath);
+            assertThat(pathNode.has("post")).isTrue();
+        }
+
+        @Test
+        @DisplayName("complete endpoint has security requirement")
+        void completeEndpointHasSecurity() throws Exception {
+            JsonNode docs = getApiDocs();
+            String completePath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/complete";
+            JsonNode postNode = docs.at("/paths").get(completePath).get("post");
+            JsonNode security = postNode.get("security");
+            assertThat(security).isNotNull();
+            assertThat(security.toString()).contains("cookieAuth");
+        }
+
+        @Test
+        @DisplayName("reopen endpoint has security requirement")
+        void reopenEndpointHasSecurity() throws Exception {
+            JsonNode docs = getApiDocs();
+            String reopenPath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/reopen";
+            JsonNode postNode = docs.at("/paths").get(reopenPath).get("post");
+            JsonNode security = postNode.get("security");
+            assertThat(security).isNotNull();
+            assertThat(security.toString()).contains("cookieAuth");
+        }
     }
 }

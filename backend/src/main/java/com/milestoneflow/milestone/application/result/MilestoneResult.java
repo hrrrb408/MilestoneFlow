@@ -17,6 +17,7 @@ import java.util.UUID;
  * @param description milestone description (nullable)
  * @param status      milestone status
  * @param dueDate     target completion date (nullable)
+ * @param completedAt completion timestamp (nullable, set when COMPLETED)
  * @param createdAt   creation timestamp
  * @param updatedAt   last update timestamp
  */
@@ -28,6 +29,7 @@ public record MilestoneResult(
         String description,
         String status,
         LocalDate dueDate,
+        Instant completedAt,
         Instant createdAt,
         Instant updatedAt
 ) {

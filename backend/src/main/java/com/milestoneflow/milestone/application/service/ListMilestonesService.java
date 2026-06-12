@@ -3,6 +3,7 @@ package com.milestoneflow.milestone.application.service;
 import com.milestoneflow.milestone.application.port.in.ListMilestonesUseCase;
 import com.milestoneflow.milestone.application.port.out.MilestoneRepository;
 import com.milestoneflow.milestone.application.result.MilestoneResult;
+import com.milestoneflow.milestone.domain.exception.MilestoneInvalidStatusException;
 import com.milestoneflow.milestone.domain.model.Milestone;
 import com.milestoneflow.milestone.domain.type.MilestoneStatus;
 import com.milestoneflow.project.application.port.out.ProjectRepository;
@@ -56,7 +57,12 @@ public class ListMilestonesService implements ListMilestonesUseCase {
         // 3. Query milestones with optional status filter
         List<Milestone> milestones;
         if (status != null && !status.isBlank()) {
-            MilestoneStatus statusFilter = MilestoneStatus.valueOf(status);
+            MilestoneStatus statusFilter;
+            try {
+                statusFilter = MilestoneStatus.valueOf(status);
+            } catch (IllegalArgumentException e) {
+                throw new MilestoneInvalidStatusException(status);
+            }
             milestones = milestoneRepository.findByWorkspaceIdAndProjectIdAndStatus(
                     workspaceId, projectId, statusFilter);
         } else {
@@ -77,6 +83,7 @@ public class ListMilestonesService implements ListMilestonesUseCase {
                 milestone.getDescription(),
                 milestone.getStatus().name(),
                 milestone.getDueDate(),
+                milestone.getCompletedAt(),
                 milestone.getCreatedAt(),
                 milestone.getUpdatedAt()
         );

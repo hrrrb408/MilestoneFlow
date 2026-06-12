@@ -63,6 +63,7 @@ public class GetMilestoneService implements GetMilestoneUseCase {
                 milestone.getDescription(),
                 milestone.getStatus().name(),
                 milestone.getDueDate(),
+                milestone.getCompletedAt(),
                 milestone.getCreatedAt(),
                 milestone.getUpdatedAt()
         );

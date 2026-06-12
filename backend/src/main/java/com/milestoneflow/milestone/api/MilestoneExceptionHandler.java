@@ -1,5 +1,9 @@
 package com.milestoneflow.milestone.api;
 
+import com.milestoneflow.milestone.domain.exception.MilestoneAlreadyCompletedException;
+import com.milestoneflow.milestone.domain.exception.MilestoneCompletedException;
+import com.milestoneflow.milestone.domain.exception.MilestoneInvalidStatusException;
+import com.milestoneflow.milestone.domain.exception.MilestoneNotCompletedException;
 import com.milestoneflow.milestone.domain.exception.MilestoneNotFoundException;
 import com.milestoneflow.project.domain.exception.ProjectArchivedException;
 import com.milestoneflow.project.domain.exception.ProjectNotFoundException;
@@ -111,6 +115,70 @@ public class MilestoneExceptionHandler extends GlobalExceptionHandler {
         return build(
                 HttpStatus.FORBIDDEN,
                 "WORKSPACE_OWNER_REQUIRED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles attempt to complete a milestone that is already COMPLETED.
+     * Returns 409 MILESTONE_ALREADY_COMPLETED.
+     */
+    @ExceptionHandler(MilestoneAlreadyCompletedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAlreadyCompleted(
+            MilestoneAlreadyCompletedException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.CONFLICT,
+                "MILESTONE_ALREADY_COMPLETED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles attempt to reopen a milestone that is not COMPLETED.
+     * Returns 409 MILESTONE_NOT_COMPLETED.
+     */
+    @ExceptionHandler(MilestoneNotCompletedException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotCompleted(
+            MilestoneNotCompletedException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.CONFLICT,
+                "MILESTONE_NOT_COMPLETED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles attempt to update a milestone that is COMPLETED.
+     * Returns 409 MILESTONE_COMPLETED.
+     */
+    @ExceptionHandler(MilestoneCompletedException.class)
+    public ResponseEntity<ApiErrorResponse> handleCompleted(
+            MilestoneCompletedException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.CONFLICT,
+                "MILESTONE_COMPLETED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles invalid milestone status value in query parameters.
+     * Returns 422 MILESTONE_INVALID_STATUS.
+     */
+    @ExceptionHandler(MilestoneInvalidStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidStatus(
+            MilestoneInvalidStatusException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "MILESTONE_INVALID_STATUS",
                 ex.getMessage(),
                 request.getRequestURI()
         );
