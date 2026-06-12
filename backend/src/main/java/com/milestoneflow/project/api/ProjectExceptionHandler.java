@@ -2,6 +2,7 @@ package com.milestoneflow.project.api;
 
 import com.milestoneflow.project.domain.exception.ProjectArchivedException;
 import com.milestoneflow.project.domain.exception.ProjectInvalidDateRangeException;
+import com.milestoneflow.project.domain.exception.ProjectNotArchivedException;
 import com.milestoneflow.project.domain.exception.ProjectNotFoundException;
 import com.milestoneflow.shared.api.ApiErrorResponse;
 import com.milestoneflow.shared.web.GlobalExceptionHandler;
@@ -79,6 +80,22 @@ public class ProjectExceptionHandler extends GlobalExceptionHandler {
         return build(
                 HttpStatus.CONFLICT,
                 "PROJECT_ARCHIVED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles attempt to restore a project that is not archived.
+     * Returns 409 PROJECT_NOT_ARCHIVED.
+     */
+    @ExceptionHandler(ProjectNotArchivedException.class)
+    public ResponseEntity<ApiErrorResponse> handleProjectNotArchived(
+            ProjectNotArchivedException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.CONFLICT,
+                "PROJECT_NOT_ARCHIVED",
                 ex.getMessage(),
                 request.getRequestURI()
         );

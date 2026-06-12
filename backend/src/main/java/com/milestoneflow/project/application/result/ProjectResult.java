@@ -28,6 +28,7 @@ public record ProjectResult(
         String status,
         LocalDate startDate,
         LocalDate targetDate,
+        Instant archivedAt,
         Instant createdAt,
         Instant updatedAt
 ) {

@@ -1,7 +1,9 @@
 package com.milestoneflow.project.application.port.out;
 
 import com.milestoneflow.project.domain.model.Project;
+import com.milestoneflow.project.domain.type.ProjectStatus;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,4 +52,13 @@ public interface ProjectRepository {
      * @return list of all projects
      */
     List<Project> findByWorkspaceId(UUID workspaceId);
+
+    /**
+     * Finds projects in a workspace matching the given statuses, ordered by creation time descending.
+     *
+     * @param workspaceId the workspace scope
+     * @param statuses    the statuses to filter by
+     * @return list of matching projects
+     */
+    List<Project> findByWorkspaceIdAndStatuses(UUID workspaceId, Collection<ProjectStatus> statuses);
 }

@@ -9,7 +9,7 @@ import java.time.LocalDate;
  * Response DTO for a single project.
  *
  * <p>Does not expose internal auditing fields (createdBy, updatedBy),
- * version, settings, or archivedAt.
+ * version, or settings.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Project response")
@@ -35,6 +35,9 @@ public record ProjectResponse(
 
         @Schema(description = "Target completion date", example = "2026-07-12")
         LocalDate targetDate,
+
+        @Schema(description = "Archival timestamp (null when ACTIVE)")
+        String archivedAt,
 
         @Schema(description = "Creation timestamp")
         String createdAt,
