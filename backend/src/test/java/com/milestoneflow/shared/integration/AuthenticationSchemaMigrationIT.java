@@ -30,7 +30,7 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
                     "SELECT COUNT(*) FROM flyway_schema_history WHERE success = true",
                     Integer.class
             );
-            assertThat(count).isGreaterThanOrEqualTo(7);
+            assertThat(count).isGreaterThanOrEqualTo(10);
         }
 
         @Test
@@ -135,8 +135,8 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
         void shouldNotHaveBusinessTablesYet() {
             // project table added in B3-001 (V008)
             // milestone table added in B4-001 (V009)
+            // task table added in B5-001 (V010)
             assertThat(tableExists("client")).isFalse();
-            assertThat(tableExists("task")).isFalse();
             assertThat(tableExists("action_item_projection")).isFalse();
             assertThat(tableExists("feedback_projection")).isFalse();
             assertThat(tableExists("receivable")).isFalse();
