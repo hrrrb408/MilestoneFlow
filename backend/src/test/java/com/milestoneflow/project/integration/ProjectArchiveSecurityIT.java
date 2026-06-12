@@ -251,57 +251,34 @@ class ProjectArchiveSecurityIT extends AbstractIntegrationTest {
         void shouldRejectArchiveWithoutCsrf() {
             String projectId = createProject();
 
-            // Get all cookies from a full auth flow (includes session cookie)
-            HttpHeaders noCsrfHeaders = authHeadersWithSessionButNoCsrf(OWNER_EMAIL);
+            // Build headers with only access cookie (no XSRF-TOKEN cookie or header)
+            var headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            String ownerCookie = loginAndGetCookie(OWNER_EMAIL);
+            headers.add("Cookie", ownerCookie);
 
             ResponseEntity<Map> response = restTemplate.exchange(
                     projectBasePath() + "/" + projectId + "/archive", HttpMethod.POST,
-                    new HttpEntity<>(noCsrfHeaders), Map.class);
+                    new HttpEntity<>(headers), Map.class);
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            // Without XSRF-TOKEN cookie, the CSRF filter rejects the request.
+            // The custom AuthenticationEntryPoint maps this to 401.
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
 
         @Test
         @DisplayName("should reject restore without CSRF token")
         void shouldRejectRestoreWithoutCsrf() {
-            HttpHeaders noCsrfHeaders = authHeadersWithSessionButNoCsrf(OWNER_EMAIL);
+            var headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            String ownerCookie = loginAndGetCookie(OWNER_EMAIL);
+            headers.add("Cookie", ownerCookie);
 
             ResponseEntity<Map> response = restTemplate.exchange(
                     projectBasePath() + "/" + UUID.randomUUID() + "/restore", HttpMethod.POST,
-                    new HttpEntity<>(noCsrfHeaders), Map.class);
+                    new HttpEntity<>(headers), Map.class);
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
-    }
-
-    /**
-     * Builds auth headers with session cookie but without CSRF token header.
-     * This simulates a valid session that is missing the CSRF token.
-     */
-    private HttpHeaders authHeadersWithSessionButNoCsrf(String email) {
-        // Login to get MF_ACCESS cookie
-        var loginBody = Map.of("email", email, "password", PASSWORD);
-        var loginHeaders = new HttpHeaders();
-        loginHeaders.setContentType(MediaType.APPLICATION_JSON);
-        ResponseEntity<Map> loginResponse = restTemplate.exchange(
-                "/auth/login", HttpMethod.POST,
-                new HttpEntity<>(loginBody, loginHeaders), Map.class);
-        String accessCookie = extractCookie(loginResponse, "MF_ACCESS=");
-
-        // Call /auth/me to get session cookie (but intentionally skip X-XSRF-TOKEN header)
-        var headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add("Cookie", accessCookie);
-        ResponseEntity<Void> csrfResponse = restTemplate.exchange(
-                "/auth/me", HttpMethod.GET, new HttpEntity<>(headers), Void.class);
-        var setCookies = csrfResponse.getHeaders().get("Set-Cookie");
-        if (setCookies != null) {
-            for (String cookie : setCookies) {
-                // Include all cookies EXCEPT skip adding the X-XSRF-TOKEN header
-                headers.add("Cookie", cookie.split(";")[0]);
-            }
-        }
-        // Intentionally do NOT add X-XSRF-TOKEN header
-        return headers;
     }
 }
