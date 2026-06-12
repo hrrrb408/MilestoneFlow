@@ -86,6 +86,47 @@ public class AuditEventWriter {
     }
 
     /**
+     * Records an audit event with workspace context.
+     *
+     * <p>Best-effort: failures are logged but do not propagate to the caller.
+     *
+     * @param action      the event action
+     * @param actorId     the user ID (nullable for SYSTEM events)
+     * @param actorType   USER, SYSTEM, or JOB
+     * @param targetType  the type of target entity (nullable)
+     * @param targetId    the ID of the target entity (nullable)
+     * @param workspaceId the workspace context (nullable for identity events)
+     * @param requestId   the request correlation ID (nullable)
+     * @param summary     human-readable summary
+     * @param metadata    additional sanitized context (nullable)
+     */
+    public void write(String action, UUID actorId, String actorType,
+                      String targetType, UUID targetId, UUID workspaceId,
+                      String requestId, String summary,
+                      Map<String, Object> metadata) {
+        try {
+            AuditEvent event = AuditEvent.create(
+                    idGenerator.nextId(),
+                    actorId,
+                    actorType,
+                    action,
+                    targetType,
+                    targetId,
+                    workspaceId,
+                    requestId,
+                    "API",
+                    summary,
+                    metadata,
+                    Instant.now(clock)
+            );
+            auditEventRepository.save(event);
+        } catch (Exception e) {
+            log.warn("Audit write failed: action={}, actorId={}, requestId={}, error={}",
+                    action, actorId, requestId, e.getMessage());
+        }
+    }
+
+    /**
      * Convenience method for user-initiated auth events.
      */
     public void writeUserEvent(String action, UUID userId, String targetType,

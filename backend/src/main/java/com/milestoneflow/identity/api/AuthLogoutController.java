@@ -2,7 +2,7 @@ package com.milestoneflow.identity.api;
 
 import com.milestoneflow.identity.application.port.in.LogoutUseCase;
 import com.milestoneflow.identity.infrastructure.security.AuthCookieWriter;
-import com.milestoneflow.identity.infrastructure.security.CurrentUserPrincipal;
+import com.milestoneflow.shared.infrastructure.security.CurrentUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;

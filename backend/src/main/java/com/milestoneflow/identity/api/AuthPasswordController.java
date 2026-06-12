@@ -13,7 +13,7 @@ import com.milestoneflow.identity.application.port.in.ChangePasswordUseCase;
 import com.milestoneflow.identity.application.port.in.ForgotPasswordUseCase;
 import com.milestoneflow.identity.application.port.in.ResetPasswordUseCase;
 import com.milestoneflow.identity.infrastructure.security.AuthCookieWriter;
-import com.milestoneflow.identity.infrastructure.security.CurrentUserPrincipal;
+import com.milestoneflow.shared.infrastructure.security.CurrentUserPrincipal;
 import com.milestoneflow.shared.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

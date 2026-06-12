@@ -1,4 +1,4 @@
-package com.milestoneflow.identity.infrastructure.security;
+package com.milestoneflow.shared.infrastructure.security;
 
 import java.util.UUID;
 
@@ -10,6 +10,9 @@ import java.util.UUID;
  *
  * <p>Created by the access token authentication filter and used
  * by controllers to resolve the current user without database lookups.
+ *
+ * <p>Moved to shared package so all modules (identity, workspace, etc.)
+ * can reference it without creating cross-module infrastructure dependencies.
  */
 public record CurrentUserPrincipal(
         UUID userId,
