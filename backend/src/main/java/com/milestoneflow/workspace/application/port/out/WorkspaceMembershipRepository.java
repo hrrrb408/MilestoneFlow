@@ -1,7 +1,9 @@
 package com.milestoneflow.workspace.application.port.out;
 
+import com.milestoneflow.workspace.application.result.WorkspaceMemberResult;
 import com.milestoneflow.workspace.domain.model.WorkspaceMembership;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +27,19 @@ public interface WorkspaceMembershipRepository {
     boolean existsActiveByWorkspaceIdAndUserId(UUID workspaceId, UUID userId);
 
     boolean existsActiveByUserId(UUID userId);
+
+    /**
+     * Lists the ACTIVE members of a workspace, enriched with the safe display
+     * fields (email, displayName) from {@code app_user}.
+     *
+     * <p>This is a read-side projection (per ADR-BE-007): a single native-SQL
+     * join across {@code workspace_membership} and {@code app_user}. It returns
+     * only ACTIVE memberships, ordered by {@code joined_at} ascending, and never
+     * carries sensitive fields ({@code passwordHash}, {@code emailNormalized},
+     * token material).
+     *
+     * @param workspaceId the workspace whose members to list
+     * @return the ACTIVE members with safe display info, ordered by {@code joinedAt} ascending
+     */
+    List<WorkspaceMemberResult> findActiveMembersByWorkspaceId(UUID workspaceId);
 }
