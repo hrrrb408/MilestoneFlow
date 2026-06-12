@@ -17,7 +17,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Map;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -35,7 +34,6 @@ class MilestoneStatusSecurityIT extends AbstractIntegrationTest {
     @Autowired private PasswordEncoder passwordEncoder;
 
     private static final String OWNER_EMAIL = "ms-status-sec-owner@example.com";
-    private static final String MEMBER_EMAIL = "ms-status-sec-member@example.com";
     private static final String OUTSIDER_EMAIL = "ms-status-sec-outside@example.com";
     private static final String PASSWORD = "test-password-123";
     private static final String WS_SLUG = "ms-status-sec-ws";
@@ -44,22 +42,18 @@ class MilestoneStatusSecurityIT extends AbstractIntegrationTest {
     private String projectId;
     private String milestoneId;
     private HttpHeaders ownerHeaders;
-    private HttpHeaders memberHeadersOnly;
     private HttpHeaders outsiderHeadersOnly;
 
     @BeforeEach
     void setUp() {
         cleanAll();
         createActiveUser(OWNER_EMAIL);
-        createActiveUser(MEMBER_EMAIL);
         createActiveUser(OUTSIDER_EMAIL);
 
         String ownerCookie = loginAndGetCookie(OWNER_EMAIL);
-        String memberCookie = loginAndGetCookie(MEMBER_EMAIL);
         String outsiderCookie = loginAndGetCookie(OUTSIDER_EMAIL);
 
         ownerHeaders = authHeadersWithCsrf(ownerCookie);
-        memberHeadersOnly = authHeadersOnly(memberCookie);
         outsiderHeadersOnly = authHeadersOnly(outsiderCookie);
 
         // Owner creates workspace
@@ -83,16 +77,6 @@ class MilestoneStatusSecurityIT extends AbstractIntegrationTest {
         var projData = (Map<String, Object>) projResponse.getBody().get("data");
         projectId = (String) projData.get("id");
 
-        // Add MEMBER_EMAIL as workspace member
-        UUID memberId = jdbc.queryForObject(
-                "SELECT id FROM app_user WHERE email_normalized = ?",
-                UUID.class, MEMBER_EMAIL.toLowerCase());
-        UUID wsUuid = UUID.fromString(workspaceId);
-        jdbc.update("""
-            INSERT INTO workspace_membership (id, workspace_id, user_id, role, status, version, created_at, updated_at)
-            VALUES (gen_random_uuid(), ?::uuid, ?::uuid, 'MEMBER', 'ACTIVE', 0, now(), now())
-            """, wsUuid, memberId);
-
         // Owner creates a milestone
         ownerHeaders = authHeadersWithCsrf(ownerCookie);
         var msBody = Map.of("title", "Security Test Milestone");
@@ -105,12 +89,11 @@ class MilestoneStatusSecurityIT extends AbstractIntegrationTest {
         milestoneId = (String) msData.get("id");
 
         ownerHeaders = authHeadersWithCsrf(ownerCookie);
-        memberHeadersOnly = authHeadersOnly(memberCookie);
         outsiderHeadersOnly = authHeadersOnly(outsiderCookie);
     }
 
     private void cleanAll() {
-        for (String email : new String[]{OWNER_EMAIL, MEMBER_EMAIL, OUTSIDER_EMAIL}) {
+        for (String email : new String[]{OWNER_EMAIL, OUTSIDER_EMAIL}) {
             String norm = email.toLowerCase();
             jdbc.update("DELETE FROM milestone WHERE workspace_id IN (SELECT id FROM workspace WHERE slug = ?)", WS_SLUG);
             jdbc.update("DELETE FROM project WHERE workspace_id IN (SELECT id FROM workspace WHERE slug = ?)", WS_SLUG);
@@ -179,38 +162,38 @@ class MilestoneStatusSecurityIT extends AbstractIntegrationTest {
     }
 
     @Nested
-    @DisplayName("Non-OWNER member complete/reopen")
+    @DisplayName("Non-member (different user) complete/reopen")
     class NonOwnerAccess {
 
         @Test
-        @DisplayName("should block MEMBER from completing milestone with 403")
-        void shouldBlockMemberComplete() {
-            HttpHeaders memberHeadersCsrf = authHeadersWithCsrf(loginAndGetCookie(MEMBER_EMAIL));
+        @DisplayName("should block non-member from completing milestone with 404")
+        void shouldBlockNonMemberComplete() {
+            HttpHeaders outsiderHeadersCsrf = authHeadersWithCsrf(loginAndGetCookie(OUTSIDER_EMAIL));
 
             ResponseEntity<Map> response = restTemplate.exchange(
                     basePath() + "/" + milestoneId + "/complete",
-                    HttpMethod.POST, new HttpEntity<>(memberHeadersCsrf), Map.class);
+                    HttpMethod.POST, new HttpEntity<>(outsiderHeadersCsrf), Map.class);
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-            assertThat(response.getBody().get("code")).isEqualTo("WORKSPACE_OWNER_REQUIRED");
+            // Non-member receives 404 to prevent resource existence leakage
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
 
         @Test
-        @DisplayName("should block MEMBER from reopening milestone with 403")
-        void shouldBlockMemberReopen() {
+        @DisplayName("should block non-member from reopening milestone with 404")
+        void shouldBlockNonMemberReopen() {
             // Owner completes first
             restTemplate.exchange(
                     basePath() + "/" + milestoneId + "/complete",
                     HttpMethod.POST, new HttpEntity<>(ownerHeaders), Map.class);
 
-            HttpHeaders memberHeadersCsrf = authHeadersWithCsrf(loginAndGetCookie(MEMBER_EMAIL));
+            HttpHeaders outsiderHeadersCsrf = authHeadersWithCsrf(loginAndGetCookie(OUTSIDER_EMAIL));
 
             ResponseEntity<Map> response = restTemplate.exchange(
                     basePath() + "/" + milestoneId + "/reopen",
-                    HttpMethod.POST, new HttpEntity<>(memberHeadersCsrf), Map.class);
+                    HttpMethod.POST, new HttpEntity<>(outsiderHeadersCsrf), Map.class);
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-            assertThat(response.getBody().get("code")).isEqualTo("WORKSPACE_OWNER_REQUIRED");
+            // Non-member receives 404 to prevent resource existence leakage
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
     }
 
