@@ -175,4 +175,63 @@ class OpenApiTaskDocumentationIT {
             assertThat(security.toString()).contains("cookieAuth");
         }
     }
+
+    @Nested
+    @DisplayName("task completion endpoints")
+    class TaskCompletionEndpoints {
+
+        @Test
+        @DisplayName("includes POST complete endpoint")
+        void includesCompleteEndpoint() throws Exception {
+            JsonNode docs = getApiDocs();
+            String completePath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/tasks/{taskId}/complete";
+            assertThat(docs.get("paths").has(completePath)).isTrue();
+
+            JsonNode pathNode = docs.at("/paths").get(completePath);
+            assertThat(pathNode.has("post")).isTrue();
+        }
+
+        @Test
+        @DisplayName("includes POST reopen endpoint")
+        void includesReopenEndpoint() throws Exception {
+            JsonNode docs = getApiDocs();
+            String reopenPath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/tasks/{taskId}/reopen";
+            assertThat(docs.get("paths").has(reopenPath)).isTrue();
+
+            JsonNode pathNode = docs.at("/paths").get(reopenPath);
+            assertThat(pathNode.has("post")).isTrue();
+        }
+
+        @Test
+        @DisplayName("complete endpoint has security requirement")
+        void completeEndpointHasSecurity() throws Exception {
+            JsonNode docs = getApiDocs();
+            String completePath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/tasks/{taskId}/complete";
+            JsonNode postNode = docs.at("/paths").get(completePath).get("post");
+            JsonNode security = postNode.get("security");
+            assertThat(security).isNotNull();
+            assertThat(security.toString()).contains("cookieAuth");
+        }
+
+        @Test
+        @DisplayName("reopen endpoint has security requirement")
+        void reopenEndpointHasSecurity() throws Exception {
+            JsonNode docs = getApiDocs();
+            String reopenPath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/tasks/{taskId}/reopen";
+            JsonNode postNode = docs.at("/paths").get(reopenPath).get("post");
+            JsonNode security = postNode.get("security");
+            assertThat(security).isNotNull();
+            assertThat(security.toString()).contains("cookieAuth");
+        }
+
+        @Test
+        @DisplayName("complete endpoint does not contain JWT Bearer")
+        void completeEndpointNoJwt() throws Exception {
+            JsonNode docs = getApiDocs();
+            String completePath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/tasks/{taskId}/complete";
+            JsonNode postNode = docs.at("/paths").get(completePath).get("post");
+            String postStr = postNode.toPrettyString();
+            assertThat(postStr).doesNotContain("\"bearer\"");
+        }
+    }
 }
