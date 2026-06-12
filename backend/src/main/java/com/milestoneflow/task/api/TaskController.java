@@ -8,9 +8,11 @@ import com.milestoneflow.task.api.dto.TaskResponse;
 import com.milestoneflow.task.api.dto.UpdateTaskRequest;
 import com.milestoneflow.task.application.command.CreateTaskCommand;
 import com.milestoneflow.task.application.command.UpdateTaskCommand;
+import com.milestoneflow.task.application.port.in.CompleteTaskUseCase;
 import com.milestoneflow.task.application.port.in.CreateTaskUseCase;
 import com.milestoneflow.task.application.port.in.GetTaskUseCase;
 import com.milestoneflow.task.application.port.in.ListTasksUseCase;
+import com.milestoneflow.task.application.port.in.ReopenTaskUseCase;
 import com.milestoneflow.task.application.port.in.UpdateTaskUseCase;
 import com.milestoneflow.task.application.result.TaskResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,15 +58,21 @@ public class TaskController {
     private final ListTasksUseCase listTasksUseCase;
     private final GetTaskUseCase getTaskUseCase;
     private final UpdateTaskUseCase updateTaskUseCase;
+    private final CompleteTaskUseCase completeTaskUseCase;
+    private final ReopenTaskUseCase reopenTaskUseCase;
 
     public TaskController(CreateTaskUseCase createTaskUseCase,
                           ListTasksUseCase listTasksUseCase,
                           GetTaskUseCase getTaskUseCase,
-                          UpdateTaskUseCase updateTaskUseCase) {
+                          UpdateTaskUseCase updateTaskUseCase,
+                          CompleteTaskUseCase completeTaskUseCase,
+                          ReopenTaskUseCase reopenTaskUseCase) {
         this.createTaskUseCase = createTaskUseCase;
         this.listTasksUseCase = listTasksUseCase;
         this.getTaskUseCase = getTaskUseCase;
         this.updateTaskUseCase = updateTaskUseCase;
+        this.completeTaskUseCase = completeTaskUseCase;
+        this.reopenTaskUseCase = reopenTaskUseCase;
     }
 
     /**
@@ -217,7 +225,7 @@ public class TaskController {
                     description = "Task, milestone, project, or workspace not found",
                     content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
-                    description = "Project is archived or milestone is completed",
+                    description = "Project is archived, milestone is completed, or task is completed",
                     content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422",
                     description = "Validation failed",
@@ -245,6 +253,86 @@ public class TaskController {
 
         TaskResult result = updateTaskUseCase.update(
                 command, principal.userId(), resolveRequestId());
+
+        return ResponseEntity.ok(ApiResponse.of(toResponse(result), resolveRequestId()));
+    }
+
+    /**
+     * Completes a task.
+     */
+    @Operation(summary = "Complete a task",
+            description = "Transitions a task from OPEN to COMPLETED. "
+                    + "The authenticated user must be the workspace OWNER. "
+                    + "The project must not be archived. "
+                    + "The milestone must not be completed. "
+                    + "Requires CSRF token via X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Task completed successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Not authenticated",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    description = "Not workspace owner",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "Task, milestone, project, or workspace not found",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+                    description = "Task already completed, project is archived, or milestone is completed",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @PostMapping("/{taskId}/complete")
+    public ResponseEntity<ApiResponse<TaskResponse>> complete(
+            @AuthenticationPrincipal CurrentUserPrincipal principal,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID projectId,
+            @PathVariable UUID milestoneId,
+            @PathVariable UUID taskId) {
+
+        TaskResult result = completeTaskUseCase.complete(
+                workspaceId, projectId, milestoneId, taskId,
+                principal.userId(), resolveRequestId());
+
+        return ResponseEntity.ok(ApiResponse.of(toResponse(result), resolveRequestId()));
+    }
+
+    /**
+     * Reopens a completed task.
+     */
+    @Operation(summary = "Reopen a task",
+            description = "Transitions a task from COMPLETED back to OPEN. "
+                    + "The authenticated user must be the workspace OWNER. "
+                    + "The project must not be archived. "
+                    + "The milestone must not be completed. "
+                    + "Requires CSRF token via X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Task reopened successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Not authenticated",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    description = "Not workspace owner",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "Task, milestone, project, or workspace not found",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+                    description = "Task not completed, project is archived, or milestone is completed",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @PostMapping("/{taskId}/reopen")
+    public ResponseEntity<ApiResponse<TaskResponse>> reopen(
+            @AuthenticationPrincipal CurrentUserPrincipal principal,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID projectId,
+            @PathVariable UUID milestoneId,
+            @PathVariable UUID taskId) {
+
+        TaskResult result = reopenTaskUseCase.reopen(
+                workspaceId, projectId, milestoneId, taskId,
+                principal.userId(), resolveRequestId());
 
         return ResponseEntity.ok(ApiResponse.of(toResponse(result), resolveRequestId()));
     }

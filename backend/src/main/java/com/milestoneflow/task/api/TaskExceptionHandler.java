@@ -6,8 +6,11 @@ import com.milestoneflow.project.domain.exception.ProjectArchivedException;
 import com.milestoneflow.project.domain.exception.ProjectNotFoundException;
 import com.milestoneflow.shared.api.ApiErrorResponse;
 import com.milestoneflow.shared.web.GlobalExceptionHandler;
+import com.milestoneflow.task.domain.exception.TaskAlreadyCompletedException;
+import com.milestoneflow.task.domain.exception.TaskCompletedException;
 import com.milestoneflow.task.domain.exception.TaskInvalidPriorityException;
 import com.milestoneflow.task.domain.exception.TaskInvalidStatusException;
+import com.milestoneflow.task.domain.exception.TaskNotCompletedException;
 import com.milestoneflow.task.domain.exception.TaskNotFoundException;
 import com.milestoneflow.workspace.domain.exception.WorkspaceAccessDeniedException;
 import com.milestoneflow.workspace.domain.exception.WorkspaceOwnerRequiredException;
@@ -179,6 +182,54 @@ public class TaskExceptionHandler extends GlobalExceptionHandler {
         return build(
                 HttpStatus.UNPROCESSABLE_ENTITY,
                 "TASK_INVALID_PRIORITY",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles attempt to complete a task that is already COMPLETED.
+     * Returns 409 TASK_ALREADY_COMPLETED.
+     */
+    @ExceptionHandler(TaskAlreadyCompletedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAlreadyCompleted(
+            TaskAlreadyCompletedException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.CONFLICT,
+                "TASK_ALREADY_COMPLETED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles attempt to reopen a task that is not COMPLETED.
+     * Returns 409 TASK_NOT_COMPLETED.
+     */
+    @ExceptionHandler(TaskNotCompletedException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotCompleted(
+            TaskNotCompletedException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.CONFLICT,
+                "TASK_NOT_COMPLETED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles attempt to update a task that is COMPLETED.
+     * Returns 409 TASK_COMPLETED.
+     */
+    @ExceptionHandler(TaskCompletedException.class)
+    public ResponseEntity<ApiErrorResponse> handleTaskCompleted(
+            TaskCompletedException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.CONFLICT,
+                "TASK_COMPLETED",
                 ex.getMessage(),
                 request.getRequestURI()
         );

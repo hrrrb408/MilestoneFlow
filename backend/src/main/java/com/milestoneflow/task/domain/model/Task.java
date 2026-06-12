@@ -153,17 +153,58 @@ public class Task extends AuditedEntity {
     }
 
     /**
+     * Completes this task.
+     *
+     * <p>Transitions status from OPEN to COMPLETED. Sets {@code completedAt}
+     * and {@code completedBy}. Throws if already COMPLETED.
+     *
+     * @param actorId     the user performing the completion
+     * @param completedAt the completion timestamp
+     * @throws IllegalStateException if task is already COMPLETED
+     */
+    public void complete(UUID actorId, Instant completedAt) {
+        if (this.status == TaskStatus.COMPLETED) {
+            throw new IllegalStateException("Task is already completed");
+        }
+        this.status = TaskStatus.COMPLETED;
+        this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
+        this.completedBy = Objects.requireNonNull(actorId, "actorId must not be null");
+    }
+
+    /**
+     * Reopens this task.
+     *
+     * <p>Transitions status from COMPLETED back to OPEN. Clears
+     * {@code completedAt} and {@code completedBy}. Throws if not COMPLETED.
+     *
+     * @throws IllegalStateException if task is not COMPLETED
+     */
+    public void reopen() {
+        if (this.status != TaskStatus.COMPLETED) {
+            throw new IllegalStateException("Task is not completed");
+        }
+        this.status = TaskStatus.OPEN;
+        this.completedAt = null;
+        this.completedBy = null;
+    }
+
+    /**
      * Updates basic task information.
      *
      * <p>Only non-null parameters are applied; null parameters are ignored.
+     * COMPLETED tasks cannot be updated — reopen first.
      *
      * @param title       new title (nullable to skip)
      * @param description new description (nullable to skip)
      * @param priority    new priority (nullable to skip)
      * @param dueDate     new due date (nullable to skip)
+     * @throws IllegalStateException if task is COMPLETED
      */
     public void updateBasicInfo(String title, String description,
                                 TaskPriority priority, LocalDate dueDate) {
+        if (this.status == TaskStatus.COMPLETED) {
+            throw new IllegalStateException("Cannot update a completed task");
+        }
         if (title != null) {
             if (title.isBlank()) {
                 throw new IllegalArgumentException("title must not be blank");
