@@ -24,8 +24,10 @@ class ProjectConstraintIT extends AbstractIntegrationTest {
     @AfterEach
     void tearDown() {
         if (workspaceId != null) {
+            jdbc.update("DELETE FROM milestone WHERE workspace_id = ?::uuid", workspaceId);
             jdbc.update("DELETE FROM project WHERE workspace_id = ?::uuid", workspaceId);
         }
+        jdbc.update("DELETE FROM milestone");
         jdbc.update("DELETE FROM project");
         jdbc.update("DELETE FROM workspace_membership");
         jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");

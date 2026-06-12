@@ -134,7 +134,7 @@ class AuthenticationSchemaMigrationIT extends AbstractIntegrationTest {
         @Test
         void shouldNotHaveBusinessTablesYet() {
             // project table added in B3-001 (V008)
-            assertThat(tableExists("milestone")).isFalse();
+            // milestone table added in B4-001 (V009)
             assertThat(tableExists("client")).isFalse();
             assertThat(tableExists("task")).isFalse();
             assertThat(tableExists("action_item_projection")).isFalse();
