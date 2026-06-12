@@ -6,14 +6,17 @@ import com.milestoneflow.project.api.dto.ProjectResponse;
 import com.milestoneflow.project.api.dto.UpdateProjectRequest;
 import com.milestoneflow.project.application.command.CreateProjectCommand;
 import com.milestoneflow.project.application.command.UpdateProjectCommand;
+import com.milestoneflow.project.application.port.in.ArchiveProjectUseCase;
 import com.milestoneflow.project.application.port.in.CreateProjectUseCase;
 import com.milestoneflow.project.application.port.in.GetProjectUseCase;
 import com.milestoneflow.project.application.port.in.ListProjectsUseCase;
+import com.milestoneflow.project.application.port.in.RestoreProjectUseCase;
 import com.milestoneflow.project.application.port.in.UpdateProjectUseCase;
 import com.milestoneflow.project.application.result.ProjectResult;
 import com.milestoneflow.shared.api.ApiResponse;
 import com.milestoneflow.shared.infrastructure.security.CurrentUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -53,15 +57,21 @@ public class ProjectController {
     private final ListProjectsUseCase listProjectsUseCase;
     private final GetProjectUseCase getProjectUseCase;
     private final UpdateProjectUseCase updateProjectUseCase;
+    private final ArchiveProjectUseCase archiveProjectUseCase;
+    private final RestoreProjectUseCase restoreProjectUseCase;
 
     public ProjectController(CreateProjectUseCase createProjectUseCase,
                              ListProjectsUseCase listProjectsUseCase,
                              GetProjectUseCase getProjectUseCase,
-                             UpdateProjectUseCase updateProjectUseCase) {
+                             UpdateProjectUseCase updateProjectUseCase,
+                             ArchiveProjectUseCase archiveProjectUseCase,
+                             RestoreProjectUseCase restoreProjectUseCase) {
         this.createProjectUseCase = createProjectUseCase;
         this.listProjectsUseCase = listProjectsUseCase;
         this.getProjectUseCase = getProjectUseCase;
         this.updateProjectUseCase = updateProjectUseCase;
+        this.archiveProjectUseCase = archiveProjectUseCase;
+        this.restoreProjectUseCase = restoreProjectUseCase;
     }
 
     /**
@@ -106,11 +116,14 @@ public class ProjectController {
     }
 
     /**
-     * Lists active projects in the specified workspace.
+     * Lists projects in the specified workspace with optional filtering.
      */
     @Operation(summary = "List projects",
-            description = "Returns active projects in the specified workspace. "
-                    + "The authenticated user must have an ACTIVE membership in the workspace.")
+            description = "Returns projects in the specified workspace. "
+                    + "The authenticated user must have an ACTIVE membership in the workspace. "
+                    + "By default, only ACTIVE projects are returned. "
+                    + "Use includeArchived=true to include archived projects, "
+                    + "or status=ARCHIVED to list only archived projects.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
                     description = "Project list"),
@@ -124,10 +137,17 @@ public class ProjectController {
     @GetMapping
     public ResponseEntity<ApiResponse<ProjectListResponse>> list(
             @AuthenticationPrincipal CurrentUserPrincipal principal,
-            @PathVariable UUID workspaceId) {
+            @PathVariable UUID workspaceId,
+            @Parameter(description = "Include archived projects (default: false)")
+            @RequestParam(value = "includeArchived", required = false, defaultValue = "false")
+            Boolean includeArchived,
+            @Parameter(description = "Filter by specific status (ACTIVE or ARCHIVED). Takes priority over includeArchived.")
+            @RequestParam(value = "status", required = false)
+            String status) {
 
-        var results = listProjectsUseCase.listActiveProjects(
-                workspaceId, principal.userId(), resolveRequestId());
+        var results = listProjectsUseCase.listProjects(
+                workspaceId, principal.userId(), resolveRequestId(),
+                includeArchived, status);
 
         var items = results.stream()
                 .map(ProjectController::toResponse)
@@ -143,7 +163,8 @@ public class ProjectController {
     @Operation(summary = "Get project details",
             description = "Returns details of a specific project. "
                     + "The authenticated user must have an ACTIVE membership in the workspace. "
-                    + "Returns 404 if the project does not exist or does not belong to the workspace.")
+                    + "Returns 404 if the project does not exist or does not belong to the workspace. "
+                    + "ARCHIVED projects can still be viewed by active members.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
                     description = "Project details"),
@@ -215,6 +236,75 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.of(toResponse(result), resolveRequestId()));
     }
 
+    /**
+     * Archives a project.
+     */
+    @Operation(summary = "Archive project",
+            description = "Archives an ACTIVE project. Only workspace OWNER can archive. "
+                    + "Archived projects cannot be updated but can still be viewed. "
+                    + "Requires CSRF token via X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Project archived successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Not authenticated",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    description = "Not workspace owner",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "Project not found or access denied",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+                    description = "Project is already archived",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @PostMapping("/{projectId}/archive")
+    public ResponseEntity<ApiResponse<ProjectResponse>> archive(
+            @AuthenticationPrincipal CurrentUserPrincipal principal,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID projectId) {
+
+        ProjectResult result = archiveProjectUseCase.archive(
+                workspaceId, projectId, principal.userId(), resolveRequestId());
+
+        return ResponseEntity.ok(ApiResponse.of(toResponse(result), resolveRequestId()));
+    }
+
+    /**
+     * Restores an archived project.
+     */
+    @Operation(summary = "Restore project",
+            description = "Restores an ARCHIVED project back to ACTIVE. Only workspace OWNER can restore. "
+                    + "Requires CSRF token via X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Project restored successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    description = "Not authenticated",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    description = "Not workspace owner",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "Project not found or access denied",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+                    description = "Project is not archived",
+                    content = @Content(schema = @Schema(implementation = com.milestoneflow.shared.api.ApiErrorResponse.class)))
+    })
+    @PostMapping("/{projectId}/restore")
+    public ResponseEntity<ApiResponse<ProjectResponse>> restore(
+            @AuthenticationPrincipal CurrentUserPrincipal principal,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID projectId) {
+
+        ProjectResult result = restoreProjectUseCase.restore(
+                workspaceId, projectId, principal.userId(), resolveRequestId());
+
+        return ResponseEntity.ok(ApiResponse.of(toResponse(result), resolveRequestId()));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private static ProjectResponse toResponse(ProjectResult result) {
@@ -226,6 +316,7 @@ public class ProjectController {
                 result.status(),
                 result.startDate(),
                 result.targetDate(),
+                result.archivedAt() != null ? result.archivedAt().toString() : null,
                 result.createdAt() != null ? result.createdAt().toString() : null,
                 result.updatedAt() != null ? result.updatedAt().toString() : null
         );

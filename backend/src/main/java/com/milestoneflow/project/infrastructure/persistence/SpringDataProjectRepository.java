@@ -4,6 +4,7 @@ import com.milestoneflow.project.domain.model.Project;
 import com.milestoneflow.project.domain.type.ProjectStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +20,8 @@ interface SpringDataProjectRepository extends JpaRepository<Project, UUID> {
     Optional<Project> findByWorkspaceIdAndId(UUID workspaceId, UUID id);
 
     List<Project> findByWorkspaceIdAndStatusOrderByCreatedAtDesc(UUID workspaceId, ProjectStatus status);
+
+    List<Project> findByWorkspaceIdAndStatusInOrderByCreatedAtDesc(UUID workspaceId, Collection<ProjectStatus> statuses);
 
     List<Project> findByWorkspaceIdOrderByCreatedAtDesc(UUID workspaceId);
 }

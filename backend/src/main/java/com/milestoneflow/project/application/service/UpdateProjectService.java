@@ -5,7 +5,6 @@ import com.milestoneflow.project.application.port.in.UpdateProjectUseCase;
 import com.milestoneflow.project.application.port.out.ProjectAuditWriter;
 import com.milestoneflow.project.application.port.out.ProjectRepository;
 import com.milestoneflow.project.application.result.ProjectResult;
-import com.milestoneflow.project.domain.exception.ProjectArchivedException;
 import com.milestoneflow.project.domain.exception.ProjectInvalidDateRangeException;
 import com.milestoneflow.project.domain.exception.ProjectNotFoundException;
 import com.milestoneflow.project.domain.model.Project;
@@ -64,12 +63,7 @@ public class UpdateProjectService implements UpdateProjectUseCase {
         Project project = projectRepository.findByWorkspaceIdAndId(command.workspaceId(), command.projectId())
                 .orElseThrow(ProjectNotFoundException::new);
 
-        // 3. Verify not archived
-        if (project.getStatus() == com.milestoneflow.project.domain.type.ProjectStatus.ARCHIVED) {
-            throw new ProjectArchivedException();
-        }
-
-        // 4. Resolve effective dates for range validation
+        // 3. Resolve effective dates for range validation
         LocalDate effectiveStart = command.startDate() != null ? command.startDate() : project.getStartDate();
         LocalDate effectiveTarget = command.targetDate() != null ? command.targetDate() : project.getTargetDate();
         if (effectiveStart != null && effectiveTarget != null && effectiveStart.isAfter(effectiveTarget)) {
@@ -126,6 +120,7 @@ public class UpdateProjectService implements UpdateProjectUseCase {
                 project.getStatus().name(),
                 project.getStartDate(),
                 project.getTargetDate(),
+                project.getArchivedAt(),
                 project.getCreatedAt(),
                 project.getUpdatedAt()
         );

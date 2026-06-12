@@ -1,6 +1,8 @@
 package com.milestoneflow.project.domain.model;
 
 import com.milestoneflow.shared.persistence.AuditedEntity;
+import com.milestoneflow.project.domain.exception.ProjectArchivedException;
+import com.milestoneflow.project.domain.exception.ProjectNotArchivedException;
 import com.milestoneflow.project.domain.type.ProjectStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -120,15 +122,19 @@ public class Project extends AuditedEntity {
      * Updates basic project information.
      *
      * <p>Only non-null parameters are applied; null parameters are ignored.
-     * Status changes are not handled here — they require a dedicated workflow.
+     * Must not be called on archived projects — callers must check first.
      *
      * @param name        new name (nullable to skip)
      * @param description new description (nullable to skip)
      * @param startDate   new start date (nullable to skip)
      * @param targetDate  new target date (nullable to skip)
+     * @throws ProjectArchivedException if the project is ARCHIVED
      */
     public void updateBasicInfo(String name, String description,
                                 LocalDate startDate, LocalDate targetDate) {
+        if (this.status == ProjectStatus.ARCHIVED) {
+            throw new ProjectArchivedException();
+        }
         if (name != null) {
             this.name = name;
         }
@@ -141,6 +147,47 @@ public class Project extends AuditedEntity {
         if (targetDate != null) {
             this.targetDate = targetDate;
         }
+    }
+
+    /**
+     * Archives this project.
+     *
+     * <p>Transitions from ACTIVE to ARCHIVED, recording who archived it and when.
+     *
+     * @param actorId    the user performing the archive
+     * @param archivedAt the timestamp of the archive
+     * @throws ProjectArchivedException if the project is already ARCHIVED
+     */
+    public void archive(UUID actorId, Instant archivedAt) {
+        if (this.status == ProjectStatus.ARCHIVED) {
+            throw new ProjectArchivedException();
+        }
+        this.status = ProjectStatus.ARCHIVED;
+        this.archivedAt = Objects.requireNonNull(archivedAt, "archivedAt must not be null");
+        this.archivedBy = Objects.requireNonNull(actorId, "actorId must not be null");
+    }
+
+    /**
+     * Restores this project from ARCHIVED to ACTIVE.
+     *
+     * <p>Clears archivedAt and archivedBy.
+     *
+     * @throws ProjectNotArchivedException if the project is not ARCHIVED
+     */
+    public void restore() {
+        if (this.status != ProjectStatus.ARCHIVED) {
+            throw new ProjectNotArchivedException();
+        }
+        this.status = ProjectStatus.ACTIVE;
+        this.archivedAt = null;
+        this.archivedBy = null;
+    }
+
+    /**
+     * Returns whether this project is archived.
+     */
+    public boolean isArchived() {
+        return this.status == ProjectStatus.ARCHIVED;
     }
 
     // ── Getters ──────────────────────────────────────────────────────────

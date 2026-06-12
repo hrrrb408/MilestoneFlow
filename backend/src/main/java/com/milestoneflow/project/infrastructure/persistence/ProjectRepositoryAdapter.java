@@ -5,6 +5,7 @@ import com.milestoneflow.project.domain.model.Project;
 import com.milestoneflow.project.domain.type.ProjectStatus;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,5 +43,10 @@ public class ProjectRepositoryAdapter implements ProjectRepository {
     @Override
     public List<Project> findByWorkspaceId(UUID workspaceId) {
         return delegate.findByWorkspaceIdOrderByCreatedAtDesc(workspaceId);
+    }
+
+    @Override
+    public List<Project> findByWorkspaceIdAndStatuses(UUID workspaceId, Collection<ProjectStatus> statuses) {
+        return delegate.findByWorkspaceIdAndStatusInOrderByCreatedAtDesc(workspaceId, statuses);
     }
 }

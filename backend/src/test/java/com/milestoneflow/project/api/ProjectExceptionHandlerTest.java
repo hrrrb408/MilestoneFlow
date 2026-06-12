@@ -2,6 +2,7 @@ package com.milestoneflow.project.api;
 
 import com.milestoneflow.project.domain.exception.ProjectArchivedException;
 import com.milestoneflow.project.domain.exception.ProjectInvalidDateRangeException;
+import com.milestoneflow.project.domain.exception.ProjectNotArchivedException;
 import com.milestoneflow.project.domain.exception.ProjectNotFoundException;
 import com.milestoneflow.shared.api.ApiErrorResponse;
 import com.milestoneflow.workspace.domain.exception.WorkspaceAccessDeniedException;
@@ -83,5 +84,15 @@ class ProjectExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
         assertThat(response.getBody().code()).isEqualTo("PROJECT_INVALID_DATE_RANGE");
+    }
+
+    @Test
+    @DisplayName("should map ProjectNotArchivedException to 409")
+    void shouldMapProjectNotArchived() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleProjectNotArchived(
+                new ProjectNotArchivedException(), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody().code()).isEqualTo("PROJECT_NOT_ARCHIVED");
     }
 }

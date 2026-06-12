@@ -102,6 +102,7 @@ public class CreateProjectService implements CreateProjectUseCase {
                 project.getStatus().name(),
                 project.getStartDate(),
                 project.getTargetDate(),
+                project.getArchivedAt(),
                 project.getCreatedAt(),
                 project.getUpdatedAt()
         );

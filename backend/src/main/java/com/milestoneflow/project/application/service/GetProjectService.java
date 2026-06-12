@@ -49,6 +49,7 @@ public class GetProjectService implements GetProjectUseCase {
                 project.getStatus().name(),
                 project.getStartDate(),
                 project.getTargetDate(),
+                project.getArchivedAt(),
                 project.getCreatedAt(),
                 project.getUpdatedAt()
         );
