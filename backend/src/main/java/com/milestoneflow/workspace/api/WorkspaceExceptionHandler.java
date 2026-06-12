@@ -8,6 +8,8 @@ import com.milestoneflow.workspace.domain.exception.WorkspaceNotFoundException;
 import com.milestoneflow.workspace.domain.exception.WorkspaceOwnerRequiredException;
 import com.milestoneflow.workspace.domain.exception.WorkspaceSlugAlreadyExistsException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,8 +25,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *
  * <p>Delegates response building to the shared {@link GlobalExceptionHandler}
  * for consistent formatting.
+ *
+ * <p>Uses {@link Ordered#HIGHEST_PRECEDENCE} to ensure workspace-specific
+ * handlers are resolved before the inherited catch-all from
+ * {@link GlobalExceptionHandler}, which would otherwise return 500 for
+ * all workspace domain exceptions.
  */
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.milestoneflow.workspace")
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class WorkspaceExceptionHandler extends GlobalExceptionHandler {
 
     public WorkspaceExceptionHandler(java.time.Clock clock) {
