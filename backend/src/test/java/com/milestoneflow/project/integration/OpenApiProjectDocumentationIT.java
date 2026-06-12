@@ -188,12 +188,11 @@ class OpenApiProjectDocumentationIT {
         }
 
         @Test
-        @DisplayName("no milestone or task endpoints are exposed")
-        void noMilestoneOrTaskEndpoints() throws Exception {
+        @DisplayName("no task endpoints are exposed")
+        void noTaskEndpoints() throws Exception {
             JsonNode docs = getApiDocs();
             String paths = docs.get("paths").toPrettyString();
 
-            assertThat(paths).doesNotContain("/milestones");
             assertThat(paths).doesNotContain("/tasks");
         }
     }
