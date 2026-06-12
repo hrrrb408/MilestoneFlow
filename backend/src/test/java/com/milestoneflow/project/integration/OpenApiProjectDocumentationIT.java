@@ -188,12 +188,11 @@ class OpenApiProjectDocumentationIT {
         }
 
         @Test
-        @DisplayName("no task endpoints are exposed")
-        void noTaskEndpoints() throws Exception {
+        @DisplayName("task endpoints are exposed under milestone path")
+        void taskEndpointsUnderMilestone() throws Exception {
             JsonNode docs = getApiDocs();
-            String paths = docs.get("paths").toPrettyString();
-
-            assertThat(paths).doesNotContain("/tasks");
+            String taskPath = "/workspaces/{workspaceId}/projects/{projectId}/milestones/{milestoneId}/tasks";
+            assertThat(docs.get("paths").has(taskPath)).isTrue();
         }
     }
 }

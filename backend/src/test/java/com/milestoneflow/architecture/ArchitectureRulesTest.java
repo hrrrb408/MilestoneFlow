@@ -50,7 +50,7 @@ class ArchitectureRulesTest {
      * Matches the module list from ADR-BE-001 and architecture doc §02.
      */
     private static final String[] BUSINESS_MODULES = {
-            "identity", "workspace", "client", "project", "milestone",
+            "identity", "workspace", "client", "project", "milestone", "task",
             "quotation", "baseline", "delivery", "changeorder", "receivable",
             "publicaccess", "fileasset", "notification", "audit",
             "actioncenter", "pilotfeedback", "scheduler"
