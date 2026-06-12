@@ -234,3 +234,22 @@ All four workspace endpoints are documented in the OpenAPI specification:
 
 - **MF-BE-B2-002**: Workspace member query, invitation placeholder, B2 stage closure
 - Project B3 stage: Project entity and workspace-scoped project management
+
+---
+
+## 16. B2 Stage Closure (added by MF-BE-B2-002)
+
+B2-002 completed the Workspace B2 stage by adding the membership **read** APIs
+on top of this foundation:
+
+- `GET /api/v1/workspaces/{workspaceId}/members` — ACTIVE member roster
+- `GET /api/v1/workspaces/{workspaceId}/members/me` — current user's membership
+
+It reuses the `WorkspaceAccessChecker.requireActiveMember(...)` and the
+`workspace_membership` table defined here, **without** any new migration and
+**without** modifying the identity module. See
+[`MF-BE-B2-002_WORKSPACE_MEMBERSHIP_QUERY_AND_CLOSURE.md`](MF-BE-B2-002_WORKSPACE_MEMBERSHIP_QUERY_AND_CLOSURE.md)
+for the full acceptance report.
+
+With B2-001 + B2-002 complete, the Workspace B2 backend foundation is finished
+and **Project B3 can start** (pending CI `clean verify`).
