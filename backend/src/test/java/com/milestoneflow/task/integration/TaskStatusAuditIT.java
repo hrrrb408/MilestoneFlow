@@ -176,7 +176,7 @@ class TaskStatusAuditIT extends AbstractIntegrationTest {
 
             // Verify audit event
             List<Map<String, Object>> events = jdbc.queryForList(
-                    "SELECT * FROM audit_event WHERE target_id = ?::uuid AND event_type = 'TASK_COMPLETED'",
+                    "SELECT * FROM audit_event WHERE target_id = ?::uuid AND action = 'TASK_COMPLETED'",
                     taskId);
             assertThat(events).hasSize(1);
 
@@ -199,7 +199,7 @@ class TaskStatusAuditIT extends AbstractIntegrationTest {
                     new HttpEntity<>(authHeaders), Map.class);
 
             String metadata = jdbc.queryForObject(
-                    "SELECT metadata::text FROM audit_event WHERE target_id = ?::uuid AND event_type = 'TASK_COMPLETED'",
+                    "SELECT metadata::text FROM audit_event WHERE target_id = ?::uuid AND action = 'TASK_COMPLETED'",
                     String.class, taskId);
 
             assertThat(metadata).contains("previousStatus");
@@ -218,7 +218,7 @@ class TaskStatusAuditIT extends AbstractIntegrationTest {
                     new HttpEntity<>(authHeaders), Map.class);
 
             String metadata = jdbc.queryForObject(
-                    "SELECT metadata::text FROM audit_event WHERE target_id = ?::uuid AND event_type = 'TASK_COMPLETED'",
+                    "SELECT metadata::text FROM audit_event WHERE target_id = ?::uuid AND action = 'TASK_COMPLETED'",
                     String.class, taskId);
 
             assertThat(metadata).doesNotContain("password");
@@ -250,7 +250,7 @@ class TaskStatusAuditIT extends AbstractIntegrationTest {
 
             // Verify audit event
             List<Map<String, Object>> events = jdbc.queryForList(
-                    "SELECT * FROM audit_event WHERE target_id = ?::uuid AND event_type = 'TASK_REOPENED'",
+                    "SELECT * FROM audit_event WHERE target_id = ?::uuid AND action = 'TASK_REOPENED'",
                     taskId);
             assertThat(events).hasSize(1);
 
@@ -276,7 +276,7 @@ class TaskStatusAuditIT extends AbstractIntegrationTest {
                     new HttpEntity<>(authHeaders), Map.class);
 
             String metadata = jdbc.queryForObject(
-                    "SELECT metadata::text FROM audit_event WHERE target_id = ?::uuid AND event_type = 'TASK_REOPENED'",
+                    "SELECT metadata::text FROM audit_event WHERE target_id = ?::uuid AND action = 'TASK_REOPENED'",
                     String.class, taskId);
 
             assertThat(metadata).contains("previousStatus");
@@ -298,7 +298,7 @@ class TaskStatusAuditIT extends AbstractIntegrationTest {
                     new HttpEntity<>(authHeaders), Map.class);
 
             String metadata = jdbc.queryForObject(
-                    "SELECT metadata::text FROM audit_event WHERE target_id = ?::uuid AND event_type = 'TASK_REOPENED'",
+                    "SELECT metadata::text FROM audit_event WHERE target_id = ?::uuid AND action = 'TASK_REOPENED'",
                     String.class, taskId);
 
             assertThat(metadata).doesNotContain("password");

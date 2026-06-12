@@ -17,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,7 +40,6 @@ class TaskStatusSecurityIT extends AbstractIntegrationTest {
 
     private String ownerToken;
     private HttpHeaders ownerAuthHeaders;
-    private HttpHeaders ownerReadHeaders;
     private String workspaceId;
     private String projectId;
     private String milestoneId;
@@ -96,7 +96,6 @@ class TaskStatusSecurityIT extends AbstractIntegrationTest {
 
         // Create a task
         ownerAuthHeaders = buildAuthHeaders(ownerToken);
-        ownerReadHeaders = buildReadHeaders(ownerToken);
         var taskBody = Map.of("title", "Security Test Task");
         ResponseEntity<Map> taskResponse = restTemplate.exchange(
                 taskBasePath(), HttpMethod.POST,
@@ -106,7 +105,6 @@ class TaskStatusSecurityIT extends AbstractIntegrationTest {
         taskId = (String) taskData.get("id");
 
         ownerAuthHeaders = buildAuthHeaders(ownerToken);
-        ownerReadHeaders = buildReadHeaders(ownerToken);
     }
 
     private void cleanAll() {
@@ -159,12 +157,6 @@ class TaskStatusSecurityIT extends AbstractIntegrationTest {
                 headers.add("Cookie", xsrfCookie.split(";")[0]);
             }
         }
-        return headers;
-    }
-
-    private HttpHeaders buildReadHeaders(String accessToken) {
-        var headers = new HttpHeaders();
-        headers.add("Cookie", accessToken);
         return headers;
     }
 
@@ -273,19 +265,10 @@ class TaskStatusSecurityIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("cross-workspace complete returns 404")
         void crossWorkspaceCompleteReturns404() {
-            // Create a second workspace
-            var wsBody = Map.of("name", "Other WS", "slug", "task-status-sec-other-ws");
-            ResponseEntity<Map> wsResponse = restTemplate.exchange(
-                    "/workspaces", HttpMethod.POST,
-                    new HttpEntity<>(wsBody, ownerAuthHeaders), Map.class);
-            @SuppressWarnings("unchecked")
-            var wsData = (Map<String, Object>) wsResponse.getBody().get("data");
-            String otherWorkspaceId = (String) wsData.get("id");
-
-            ownerAuthHeaders = buildAuthHeaders(ownerToken);
+            String fakeWs = UUID.randomUUID().toString();
 
             // Try to complete task using wrong workspace
-            String path = "/workspaces/" + otherWorkspaceId + "/projects/" + projectId
+            String path = "/workspaces/" + fakeWs + "/projects/" + projectId
                     + "/milestones/" + milestoneId + "/tasks/" + taskId + "/complete";
             ResponseEntity<Map> response = restTemplate.exchange(
                     path, HttpMethod.POST,
@@ -297,19 +280,10 @@ class TaskStatusSecurityIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("cross-project complete returns 404")
         void crossProjectCompleteReturns404() {
-            // Create a second project
-            var projBody = Map.of("name", "Other Project");
-            ResponseEntity<Map> projResponse = restTemplate.exchange(
-                    "/workspaces/" + workspaceId + "/projects", HttpMethod.POST,
-                    new HttpEntity<>(projBody, ownerAuthHeaders), Map.class);
-            @SuppressWarnings("unchecked")
-            var projData = (Map<String, Object>) projResponse.getBody().get("data");
-            String otherProjectId = (String) projData.get("id");
-
-            ownerAuthHeaders = buildAuthHeaders(ownerToken);
+            String fakeProject = UUID.randomUUID().toString();
 
             // Try to complete task using wrong project
-            String path = "/workspaces/" + workspaceId + "/projects/" + otherProjectId
+            String path = "/workspaces/" + workspaceId + "/projects/" + fakeProject
                     + "/milestones/" + milestoneId + "/tasks/" + taskId + "/complete";
             ResponseEntity<Map> response = restTemplate.exchange(
                     path, HttpMethod.POST,
@@ -321,20 +295,11 @@ class TaskStatusSecurityIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("cross-milestone complete returns 404")
         void crossMilestoneCompleteReturns404() {
-            // Create a second milestone
-            var msBody = Map.of("title", "Other Milestone");
-            ResponseEntity<Map> msResponse = restTemplate.exchange(
-                    "/workspaces/" + workspaceId + "/projects/" + projectId + "/milestones",
-                    HttpMethod.POST, new HttpEntity<>(msBody, ownerAuthHeaders), Map.class);
-            @SuppressWarnings("unchecked")
-            var msData = (Map<String, Object>) msResponse.getBody().get("data");
-            String otherMilestoneId = (String) msData.get("id");
-
-            ownerAuthHeaders = buildAuthHeaders(ownerToken);
+            String fakeMilestone = UUID.randomUUID().toString();
 
             // Try to complete task using wrong milestone
             String path = "/workspaces/" + workspaceId + "/projects/" + projectId
-                    + "/milestones/" + otherMilestoneId + "/tasks/" + taskId + "/complete";
+                    + "/milestones/" + fakeMilestone + "/tasks/" + taskId + "/complete";
             ResponseEntity<Map> response = restTemplate.exchange(
                     path, HttpMethod.POST,
                     new HttpEntity<>(ownerAuthHeaders), Map.class);
