@@ -1,6 +1,6 @@
 package com.milestoneflow.workspace.infrastructure.persistence;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -11,10 +11,11 @@ import java.util.UUID;
  * {@code app_user}. It selects only the safe display fields and never exposes
  * {@code password_hash}, {@code email_normalized}, or token material.
  *
- * <p>{@code joinedAt} is read as {@link OffsetDateTime} — the deterministic
- * JDBC-native type for a Postgres {@code timestamptz} column — and converted
- * to {@link java.time.Instant} in the adapter. This avoids relying on Spring
- * Data's automatic {@code timestamptz → Instant} projection conversion.
+ * <p>{@code joinedAt} is read as {@link Instant} because Hibernate's native-query
+ * result handling already maps a Postgres {@code timestamptz} column to
+ * {@code Instant}; declaring any other java.time type (e.g. {@code OffsetDateTime})
+ * triggers Spring Data's projection converter, which has no matching converter
+ * and fails at runtime.
  *
  * <p>Package-private per ARCH-005/ARCH-010: this infrastructure query type is
  * not leaked to the application layer. The adapter maps it to the application
@@ -32,5 +33,5 @@ interface WorkspaceMemberProjection {
 
     String getStatus();
 
-    OffsetDateTime getJoinedAt();
+    Instant getJoinedAt();
 }

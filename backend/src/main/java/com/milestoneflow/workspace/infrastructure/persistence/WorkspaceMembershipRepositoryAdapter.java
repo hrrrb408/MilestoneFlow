@@ -64,7 +64,7 @@ public class WorkspaceMembershipRepositoryAdapter implements WorkspaceMembership
                 projection.getDisplayName(),
                 projection.getRole(),
                 projection.getStatus(),
-                projection.getJoinedAt() != null ? projection.getJoinedAt().toInstant() : null
+                projection.getJoinedAt()
         );
     }
 }
