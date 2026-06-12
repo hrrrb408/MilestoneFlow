@@ -12,6 +12,7 @@ import com.milestoneflow.task.application.command.UpdateTaskCommand;
 import com.milestoneflow.task.application.port.out.TaskAuditWriter;
 import com.milestoneflow.task.application.port.out.TaskRepository;
 import com.milestoneflow.task.application.result.TaskResult;
+import com.milestoneflow.task.domain.exception.TaskCompletedException;
 import com.milestoneflow.task.domain.exception.TaskInvalidPriorityException;
 import com.milestoneflow.task.domain.exception.TaskNotFoundException;
 import com.milestoneflow.task.domain.model.Task;
@@ -232,6 +233,56 @@ class UpdateTaskServiceTest {
 
             assertThatThrownBy(() -> service.update(command, USER_ID, REQUEST_ID))
                     .isInstanceOf(TaskInvalidPriorityException.class);
+        }
+
+        @Test
+        @DisplayName("should reject update when task is COMPLETED")
+        void shouldRejectUpdateWhenTaskIsCompleted() {
+            when(workspaceAccessChecker.requireOwner(WORKSPACE_ID, USER_ID))
+                    .thenReturn(createMembership());
+            when(projectRepository.findByWorkspaceIdAndId(WORKSPACE_ID, PROJECT_ID))
+                    .thenReturn(Optional.of(createProject()));
+            when(milestoneRepository.findByWorkspaceIdAndProjectIdAndId(
+                    WORKSPACE_ID, PROJECT_ID, MILESTONE_ID))
+                    .thenReturn(Optional.of(createMilestone()));
+            Task completedTask = createTask();
+            completedTask.complete(USER_ID, Instant.now());
+            when(taskRepository.findByWorkspaceIdAndProjectIdAndMilestoneIdAndId(
+                    WORKSPACE_ID, PROJECT_ID, MILESTONE_ID, TASK_ID))
+                    .thenReturn(Optional.of(completedTask));
+
+            UpdateTaskCommand command = new UpdateTaskCommand(
+                    WORKSPACE_ID, PROJECT_ID, MILESTONE_ID, TASK_ID,
+                    "Updated Title", null, null, null);
+
+            assertThatThrownBy(() -> service.update(command, USER_ID, REQUEST_ID))
+                    .isInstanceOf(TaskCompletedException.class);
+        }
+
+        @Test
+        @DisplayName("should allow update after reopen")
+        void shouldAllowUpdateAfterReopen() {
+            when(workspaceAccessChecker.requireOwner(WORKSPACE_ID, USER_ID))
+                    .thenReturn(createMembership());
+            when(projectRepository.findByWorkspaceIdAndId(WORKSPACE_ID, PROJECT_ID))
+                    .thenReturn(Optional.of(createProject()));
+            when(milestoneRepository.findByWorkspaceIdAndProjectIdAndId(
+                    WORKSPACE_ID, PROJECT_ID, MILESTONE_ID))
+                    .thenReturn(Optional.of(createMilestone()));
+            Task task = createTask();
+            task.complete(USER_ID, Instant.now());
+            task.reopen();
+            when(taskRepository.findByWorkspaceIdAndProjectIdAndMilestoneIdAndId(
+                    WORKSPACE_ID, PROJECT_ID, MILESTONE_ID, TASK_ID))
+                    .thenReturn(Optional.of(task));
+            when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            UpdateTaskCommand command = new UpdateTaskCommand(
+                    WORKSPACE_ID, PROJECT_ID, MILESTONE_ID, TASK_ID,
+                    "Updated Title", null, null, null);
+
+            TaskResult result = service.update(command, USER_ID, REQUEST_ID);
+            assertThat(result.title()).isEqualTo("Updated Title");
         }
 
         @Test

@@ -13,6 +13,7 @@ import com.milestoneflow.task.application.port.in.UpdateTaskUseCase;
 import com.milestoneflow.task.application.port.out.TaskAuditWriter;
 import com.milestoneflow.task.application.port.out.TaskRepository;
 import com.milestoneflow.task.application.result.TaskResult;
+import com.milestoneflow.task.domain.exception.TaskCompletedException;
 import com.milestoneflow.task.domain.exception.TaskInvalidPriorityException;
 import com.milestoneflow.task.domain.exception.TaskNotFoundException;
 import com.milestoneflow.task.domain.model.Task;
@@ -102,26 +103,31 @@ public class UpdateTaskService implements UpdateTaskUseCase {
                         command.milestoneId(), command.taskId())
                 .orElseThrow(TaskNotFoundException::new);
 
-        // 6. Resolve priority
+        // 6. Reject update if task is COMPLETED
+        if (task.isCompleted()) {
+            throw new TaskCompletedException();
+        }
+
+        // 7. Resolve priority
         TaskPriority priority = resolvePriority(command.priority());
 
-        // 7. Build change metadata
+        // 8. Build change metadata
         Map<String, Object> changes = buildChangeMetadata(task, command, priority);
 
-        // 8. Apply updates
+        // 9. Apply updates
         task.updateBasicInfo(command.title(), command.description(), priority, command.dueDate());
 
-        // 9. Save — use returned managed entity
+        // 10. Save — use returned managed entity
         Task saved = taskRepository.save(task);
 
         log.info("Task updated: taskId={}, milestoneId={}, projectId={}, workspaceId={}",
                 saved.getId(), command.milestoneId(), command.projectId(), command.workspaceId());
 
-        // 10. Audit
+        // 11. Audit
         auditWriter.writeUserEvent("TASK_UPDATED", userId, command.workspaceId(),
                 saved.getId(), requestId, "Task updated", changes);
 
-        // 11. Return result
+        // 12. Return result
         return toResult(saved);
     }
 
