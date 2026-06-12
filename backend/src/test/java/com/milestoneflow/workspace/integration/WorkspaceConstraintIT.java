@@ -93,7 +93,7 @@ class WorkspaceConstraintIT extends AbstractIntegrationTest {
                         INSERT INTO workspace (id, name, slug, default_currency, timezone, status, version, created_at, updated_at)
                         VALUES (gen_random_uuid(), 'Test', 'long-currency', 'TWDD', 'Asia/Taipei', 'ACTIVE', 0, now(), now())
                         """)
-            ).hasMessageMatching(".*(ck_workspace_currency|value too long).*");
+            ).hasMessageMatching("(?s).*(ck_workspace_currency|value too long).*");
         }
     }
 

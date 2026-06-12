@@ -118,9 +118,10 @@ public class CreateWorkspaceService implements CreateWorkspaceUseCase {
                 now
         );
 
-        // 8. Save both in transaction
-        workspaceRepository.save(workspace);
-        membershipRepository.save(membership);
+        // 8. Save both in transaction — use returned managed entities
+        // which have JPA auditing fields (createdAt, etc.) populated
+        Workspace savedWorkspace = workspaceRepository.save(workspace);
+        WorkspaceMembership savedMembership = membershipRepository.save(membership);
 
         log.info("Workspace created: workspaceId={}, slug={}, ownerId={}", workspaceId, normalizedSlug, userId);
 
@@ -131,13 +132,13 @@ public class CreateWorkspaceService implements CreateWorkspaceUseCase {
 
         return new WorkspaceResult(
                 workspaceId,
-                workspace.getName(),
-                workspace.getSlug(),
-                workspace.getStatus().name(),
-                workspace.getTimezone(),
-                workspace.getDefaultCurrency(),
-                membership.getRole().name(),
-                workspace.getCreatedAt()
+                savedWorkspace.getName(),
+                savedWorkspace.getSlug(),
+                savedWorkspace.getStatus().name(),
+                savedWorkspace.getTimezone(),
+                savedWorkspace.getDefaultCurrency(),
+                savedMembership.getRole().name(),
+                savedWorkspace.getCreatedAt()
         );
     }
 
