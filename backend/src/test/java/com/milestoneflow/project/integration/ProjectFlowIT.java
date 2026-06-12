@@ -36,6 +36,7 @@ class ProjectFlowIT extends AbstractIntegrationTest {
 
     private static final String EMAIL = "project-flow-it@example.com";
     private static final String PASSWORD = "test-password-123";
+    private static final String WS_SLUG = "project-test-ws";
     private String workspaceId;
     private HttpHeaders authHeaders;
     private HttpHeaders authHeadersOnly;
@@ -86,7 +87,7 @@ class ProjectFlowIT extends AbstractIntegrationTest {
         authHeadersOnly.add("Cookie", accessToken);
 
         // Create a workspace for project tests
-        var wsBody = Map.of("name", "Project Test Workspace", "slug", "project-test-ws");
+        var wsBody = Map.of("name", "Project Test Workspace", "slug", WS_SLUG);
         ResponseEntity<Map> wsResponse = restTemplate.exchange(
                 "/workspaces", HttpMethod.POST,
                 new HttpEntity<>(wsBody, authHeaders), Map.class);
@@ -105,12 +106,14 @@ class ProjectFlowIT extends AbstractIntegrationTest {
 
     private void cleanAll() {
         String norm = EMAIL.toLowerCase();
-        jdbc.update("DELETE FROM project WHERE workspace_id IN (SELECT id FROM workspace WHERE created_by IN (SELECT id FROM app_user WHERE email_normalized = ?))", norm);
+        // created_by is NULL in tests (AuditorAware returns empty for JDBC-inserted users)
+        // so clean workspace by its fixed slug instead
+        jdbc.update("DELETE FROM project WHERE workspace_id IN (SELECT id FROM workspace WHERE slug = ?)", WS_SLUG);
         jdbc.update("DELETE FROM workspace_membership WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
         jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");
         jdbc.update("DELETE FROM audit_event WHERE actor_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
         jdbc.update("ALTER TABLE audit_event ENABLE TRIGGER ALL");
-        jdbc.update("DELETE FROM workspace WHERE created_by IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
+        jdbc.update("DELETE FROM workspace WHERE slug = ?", WS_SLUG);
         jdbc.update("DELETE FROM auth_session WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
         jdbc.update("DELETE FROM verification_token WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
         jdbc.update("DELETE FROM app_user WHERE email_normalized = ?", norm);

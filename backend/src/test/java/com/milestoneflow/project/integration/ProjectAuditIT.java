@@ -31,6 +31,7 @@ class ProjectAuditIT extends AbstractIntegrationTest {
     @Autowired private PasswordEncoder passwordEncoder;
 
     private static final String EMAIL = "project-audit-it@example.com";
+    private static final String WS_SLUG = "audit-ws-proj";
 
     private String userId;
     private String workspaceId;
@@ -80,7 +81,7 @@ class ProjectAuditIT extends AbstractIntegrationTest {
         authHeadersOnly.add("Cookie", accessToken);
 
         // Create workspace
-        var wsBody = Map.of("name", "Audit WS", "slug", "audit-ws-proj");
+        var wsBody = Map.of("name", "Audit WS", "slug", WS_SLUG);
         ResponseEntity<Map> wsResponse = restTemplate.exchange(
                 "/workspaces", HttpMethod.POST,
                 new HttpEntity<>(wsBody, authHeaders), Map.class);
@@ -98,12 +99,14 @@ class ProjectAuditIT extends AbstractIntegrationTest {
 
     private void cleanAll() {
         String norm = EMAIL.toLowerCase();
-        jdbc.update("DELETE FROM project WHERE workspace_id IN (SELECT id FROM workspace WHERE created_by IN (SELECT id FROM app_user WHERE email_normalized = ?))", norm);
+        // created_by is NULL in tests (AuditorAware returns empty for JDBC-inserted users)
+        // so clean workspace by its fixed slug instead
+        jdbc.update("DELETE FROM project WHERE workspace_id IN (SELECT id FROM workspace WHERE slug = ?)", WS_SLUG);
         jdbc.update("DELETE FROM workspace_membership WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
         jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");
         jdbc.update("DELETE FROM audit_event WHERE actor_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
         jdbc.update("ALTER TABLE audit_event ENABLE TRIGGER ALL");
-        jdbc.update("DELETE FROM workspace WHERE created_by IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
+        jdbc.update("DELETE FROM workspace WHERE slug = ?", WS_SLUG);
         jdbc.update("DELETE FROM auth_session WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
         jdbc.update("DELETE FROM app_user WHERE email_normalized = ?", norm);
     }

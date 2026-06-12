@@ -34,6 +34,7 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
     private static final String USER_A_EMAIL = "proj-sec-a@example.com";
     private static final String USER_B_EMAIL = "proj-sec-b@example.com";
     private static final String PASSWORD = "test-password-123";
+    private static final String WS_SLUG_A = "proj-sec-ws-a";
 
     private String workspaceIdA;
     private HttpHeaders authHeadersA;
@@ -53,7 +54,7 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
         authHeadersOnlyB = authHeadersOnly(cookieB);
 
         // User A creates workspace
-        var wsBody = Map.of("name", "A's Workspace", "slug", "proj-sec-ws-a");
+        var wsBody = Map.of("name", "A's Workspace", "slug", WS_SLUG_A);
         ResponseEntity<Map> wsResponse = restTemplate.exchange(
                 "/workspaces", HttpMethod.POST,
                 new HttpEntity<>(wsBody, authHeadersA), Map.class);
@@ -67,17 +68,18 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
     }
 
     private void cleanAll() {
+        // Clean workspace by fixed slug since created_by is NULL in tests
+        jdbc.update("DELETE FROM project WHERE workspace_id IN (SELECT id FROM workspace WHERE slug = ?)", WS_SLUG_A);
         for (String email : new String[]{USER_A_EMAIL, USER_B_EMAIL}) {
             String norm = email.toLowerCase();
-            jdbc.update("DELETE FROM project WHERE workspace_id IN (SELECT id FROM workspace WHERE created_by IN (SELECT id FROM app_user WHERE email_normalized = ?))", norm);
             jdbc.update("DELETE FROM workspace_membership WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
             jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");
             jdbc.update("DELETE FROM audit_event WHERE actor_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
             jdbc.update("ALTER TABLE audit_event ENABLE TRIGGER ALL");
-            jdbc.update("DELETE FROM workspace WHERE created_by IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
             jdbc.update("DELETE FROM auth_session WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
             jdbc.update("DELETE FROM app_user WHERE email_normalized = ?", norm);
         }
+        jdbc.update("DELETE FROM workspace WHERE slug = ?", WS_SLUG_A);
     }
 
     private void createActiveUser(String email) {
