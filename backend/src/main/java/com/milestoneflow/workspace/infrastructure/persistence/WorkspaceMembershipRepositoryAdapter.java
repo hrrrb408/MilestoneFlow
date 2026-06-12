@@ -1,10 +1,12 @@
 package com.milestoneflow.workspace.infrastructure.persistence;
 
 import com.milestoneflow.workspace.application.port.out.WorkspaceMembershipRepository;
+import com.milestoneflow.workspace.application.result.WorkspaceMemberResult;
 import com.milestoneflow.workspace.domain.model.WorkspaceMembership;
 import com.milestoneflow.workspace.domain.type.WorkspaceMembershipStatus;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,5 +48,23 @@ public class WorkspaceMembershipRepositoryAdapter implements WorkspaceMembership
     @Override
     public boolean existsActiveByUserId(UUID userId) {
         return delegate.existsByUserIdAndStatus(userId, WorkspaceMembershipStatus.ACTIVE);
+    }
+
+    @Override
+    public List<WorkspaceMemberResult> findActiveMembersByWorkspaceId(UUID workspaceId) {
+        return delegate.findActiveMembersByWorkspaceId(workspaceId).stream()
+                .map(WorkspaceMembershipRepositoryAdapter::toResult)
+                .toList();
+    }
+
+    private static WorkspaceMemberResult toResult(WorkspaceMemberProjection projection) {
+        return new WorkspaceMemberResult(
+                projection.getUserId(),
+                projection.getEmail(),
+                projection.getDisplayName(),
+                projection.getRole(),
+                projection.getStatus(),
+                projection.getJoinedAt()
+        );
     }
 }

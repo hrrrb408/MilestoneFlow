@@ -88,4 +88,77 @@ class OpenApiWorkspaceDocumentationIT {
             assertThat(docStr).doesNotContain("Bearer ");
         }
     }
+
+    @Nested
+    @DisplayName("workspace member endpoints")
+    class WorkspaceMemberEndpoints {
+
+        @Test
+        @DisplayName("includes GET /workspaces/{workspaceId}/members endpoint")
+        void includesListMembers() throws Exception {
+            JsonNode docs = getApiDocs();
+
+            JsonNode membersPath = docs.at("/paths").get("/workspaces/{workspaceId}/members");
+            assertThat(membersPath).isNotNull();
+            assertThat(membersPath.has("get")).isTrue();
+        }
+
+        @Test
+        @DisplayName("includes GET /workspaces/{workspaceId}/members/me endpoint")
+        void includesCurrentMembership() throws Exception {
+            JsonNode docs = getApiDocs();
+
+            JsonNode mePath = docs.at("/paths").get("/workspaces/{workspaceId}/members/me");
+            assertThat(mePath).isNotNull();
+            assertThat(mePath.has("get")).isTrue();
+        }
+
+        @Test
+        @DisplayName("member endpoints use cookieAuth security scheme")
+        void memberEndpointsUseCookieAuth() throws Exception {
+            JsonNode docs = getApiDocs();
+
+            JsonNode membersGet = docs.at("/paths")
+                    .get("/workspaces/{workspaceId}/members").get("get");
+            JsonNode security = membersGet.get("security");
+            assertThat(security).isNotNull();
+            assertThat(security.toString()).contains("cookieAuth");
+
+            JsonNode meGet = docs.at("/paths")
+                    .get("/workspaces/{workspaceId}/members/me").get("get");
+            assertThat(meGet.get("security").toString()).contains("cookieAuth");
+        }
+
+        @Test
+        @DisplayName("OpenAPI schemas include WorkspaceMemberResponse")
+        void includesMemberResponseSchema() throws Exception {
+            JsonNode docs = getApiDocs();
+
+            JsonNode schemas = docs.at("/components/schemas");
+            assertThat(schemas.has("WorkspaceMemberResponse")).isTrue();
+            assertThat(schemas.has("WorkspaceMembersResponse")).isTrue();
+            assertThat(schemas.has("CurrentWorkspaceMembershipResponse")).isTrue();
+        }
+
+        @Test
+        @DisplayName("member endpoints do not contain JWT Bearer")
+        void memberEndpointsNoJwt() throws Exception {
+            JsonNode docs = getApiDocs();
+            String docStr = docs.toPrettyString();
+
+            assertThat(docStr).doesNotContain("\"bearer\"");
+            assertThat(docStr).doesNotContain("Bearer ");
+        }
+
+        @Test
+        @DisplayName("no invitation endpoints are exposed")
+        void noInvitationEndpoints() throws Exception {
+            JsonNode docs = getApiDocs();
+            String paths = docs.get("paths").toPrettyString();
+
+            // Invitations are reserved for a future task and must NOT be exposed.
+            assertThat(paths).doesNotContain("/invitations");
+            assertThat(paths).doesNotContain("/workspace-invitations");
+        }
+    }
 }
