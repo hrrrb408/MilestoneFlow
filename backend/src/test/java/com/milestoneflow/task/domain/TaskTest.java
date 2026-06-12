@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ class TaskTest {
     private static final UUID WS_ID = UUID.randomUUID();
     private static final UUID PROJ_ID = UUID.randomUUID();
     private static final UUID MS_ID = UUID.randomUUID();
+    private static final UUID ACTOR_ID = UUID.randomUUID();
 
     @Nested
     @DisplayName("create()")
@@ -107,6 +109,112 @@ class TaskTest {
     }
 
     @Nested
+    @DisplayName("complete()")
+    class Complete {
+
+        @Test
+        @DisplayName("should complete an OPEN task")
+        void shouldCompleteOpenTask() {
+            Task task = createDefault();
+            Instant completedAt = Instant.now();
+
+            task.complete(ACTOR_ID, completedAt);
+
+            assertThat(task.getStatus()).isEqualTo(TaskStatus.COMPLETED);
+            assertThat(task.getCompletedAt()).isEqualTo(completedAt);
+            assertThat(task.getCompletedBy()).isEqualTo(ACTOR_ID);
+        }
+
+        @Test
+        @DisplayName("should throw when completing an already COMPLETED task")
+        void shouldThrowWhenAlreadyCompleted() {
+            Task task = createDefault();
+            task.complete(ACTOR_ID, Instant.now());
+
+            assertThatThrownBy(() -> task.complete(ACTOR_ID, Instant.now()))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("already completed");
+        }
+
+        @Test
+        @DisplayName("should reject null completedAt")
+        void shouldRejectNullCompletedAt() {
+            Task task = createDefault();
+
+            assertThatThrownBy(() -> task.complete(ACTOR_ID, null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("completedAt");
+        }
+
+        @Test
+        @DisplayName("should reject null actorId")
+        void shouldRejectNullActorId() {
+            Task task = createDefault();
+
+            assertThatThrownBy(() -> task.complete(null, Instant.now()))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("actorId");
+        }
+    }
+
+    @Nested
+    @DisplayName("reopen()")
+    class Reopen {
+
+        @Test
+        @DisplayName("should reopen a COMPLETED task")
+        void shouldReopenCompletedTask() {
+            Task task = createDefault();
+            task.complete(ACTOR_ID, Instant.now());
+
+            task.reopen();
+
+            assertThat(task.getStatus()).isEqualTo(TaskStatus.OPEN);
+            assertThat(task.getCompletedAt()).isNull();
+            assertThat(task.getCompletedBy()).isNull();
+        }
+
+        @Test
+        @DisplayName("should throw when reopening an OPEN task")
+        void shouldThrowWhenNotCompleted() {
+            Task task = createDefault();
+
+            assertThatThrownBy(task::reopen)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("not completed");
+        }
+    }
+
+    @Nested
+    @DisplayName("isCompleted()")
+    class IsCompleted {
+
+        @Test
+        @DisplayName("should return false for OPEN task")
+        void shouldReturnFalseForOpen() {
+            Task task = createDefault();
+            assertThat(task.isCompleted()).isFalse();
+        }
+
+        @Test
+        @DisplayName("should return true for COMPLETED task")
+        void shouldReturnTrueForCompleted() {
+            Task task = createDefault();
+            task.complete(ACTOR_ID, Instant.now());
+            assertThat(task.isCompleted()).isTrue();
+        }
+
+        @Test
+        @DisplayName("should return false after reopen")
+        void shouldReturnFalseAfterReopen() {
+            Task task = createDefault();
+            task.complete(ACTOR_ID, Instant.now());
+            task.reopen();
+            assertThat(task.isCompleted()).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("updateBasicInfo()")
     class UpdateBasicInfo {
 
@@ -176,18 +284,29 @@ class TaskTest {
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("160");
         }
-    }
-
-    @Nested
-    @DisplayName("isCompleted()")
-    class IsCompleted {
 
         @Test
-        @DisplayName("should return false for OPEN task")
-        void shouldReturnFalseForOpen() {
-            Task task = Task.create(ID, WS_ID, PROJ_ID, MS_ID, "Test",
-                    null, TaskPriority.MEDIUM, null);
-            assertThat(task.isCompleted()).isFalse();
+        @DisplayName("should reject update on COMPLETED task")
+        void shouldRejectUpdateOnCompletedTask() {
+            Task task = createDefault();
+            task.complete(ACTOR_ID, Instant.now());
+
+            assertThatThrownBy(() -> task.updateBasicInfo("New Title", null, null, null))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Cannot update a completed task");
+        }
+
+        @Test
+        @DisplayName("should allow update after reopen")
+        void shouldAllowUpdateAfterReopen() {
+            Task task = createDefault();
+            task.complete(ACTOR_ID, Instant.now());
+            task.reopen();
+
+            task.updateBasicInfo("New Title", null, null, null);
+
+            assertThat(task.getTitle()).isEqualTo("New Title");
+            assertThat(task.getStatus()).isEqualTo(TaskStatus.OPEN);
         }
     }
 
@@ -206,5 +325,12 @@ class TaskTest {
             assertThat(str).contains("Task{");
             assertThat(str).contains("title='Test'");
         }
+    }
+
+    // ── Helper ───────────────────────────────────────────────────────────
+
+    private static Task createDefault() {
+        return Task.create(ID, WS_ID, PROJ_ID, MS_ID, "Test Task",
+                "Description", TaskPriority.MEDIUM, LocalDate.of(2026, 7, 15));
     }
 }
