@@ -74,10 +74,13 @@ class WorkspaceMemberSecurityIT extends AbstractIntegrationTest {
             jdbc.update("ALTER TABLE audit_event DISABLE TRIGGER ALL");
             jdbc.update("DELETE FROM audit_event WHERE actor_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
             jdbc.update("ALTER TABLE audit_event ENABLE TRIGGER ALL");
-            jdbc.update("DELETE FROM workspace WHERE created_by IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
             jdbc.update("DELETE FROM auth_session WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
             jdbc.update("DELETE FROM app_user WHERE email_normalized = ?", norm);
         }
+        // created_by is NULL in tests (AuditorAware returns empty), so remove the
+        // workspace by its fixed slug. Done once, after all referencing memberships
+        // and audit events have been removed, to satisfy FK constraints.
+        jdbc.update("DELETE FROM workspace WHERE slug = 'sec-member-ws'");
     }
 
     private void createActiveUser(String email) {
