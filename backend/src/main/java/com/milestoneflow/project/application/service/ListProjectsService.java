@@ -52,7 +52,7 @@ public class ListProjectsService implements ListProjectsUseCase {
         List<ProjectStatus> statuses = resolveStatuses(includeArchived, status);
 
         List<Project> projects;
-        if (statuses.size() == 1) {
+        if (statuses.size() == 1 && statuses.get(0) == ProjectStatus.ACTIVE) {
             projects = projectRepository.findActiveByWorkspaceId(workspaceId);
         } else {
             projects = projectRepository.findByWorkspaceIdAndStatuses(workspaceId, statuses);

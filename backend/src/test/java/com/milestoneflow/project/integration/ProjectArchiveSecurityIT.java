@@ -251,15 +251,12 @@ class ProjectArchiveSecurityIT extends AbstractIntegrationTest {
         void shouldRejectArchiveWithoutCsrf() {
             String projectId = createProject();
 
-            var headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            // Only cookie, no CSRF
-            String ownerCookie = loginAndGetCookie(OWNER_EMAIL);
-            headers.add("Cookie", ownerCookie);
+            // Get all cookies from a full auth flow (includes session cookie)
+            HttpHeaders noCsrfHeaders = authHeadersWithSessionButNoCsrf(OWNER_EMAIL);
 
             ResponseEntity<Map> response = restTemplate.exchange(
                     projectBasePath() + "/" + projectId + "/archive", HttpMethod.POST,
-                    new HttpEntity<>(headers), Map.class);
+                    new HttpEntity<>(noCsrfHeaders), Map.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         }
@@ -267,16 +264,44 @@ class ProjectArchiveSecurityIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should reject restore without CSRF token")
         void shouldRejectRestoreWithoutCsrf() {
-            var headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            String ownerCookie = loginAndGetCookie(OWNER_EMAIL);
-            headers.add("Cookie", ownerCookie);
+            HttpHeaders noCsrfHeaders = authHeadersWithSessionButNoCsrf(OWNER_EMAIL);
 
             ResponseEntity<Map> response = restTemplate.exchange(
                     projectBasePath() + "/" + UUID.randomUUID() + "/restore", HttpMethod.POST,
-                    new HttpEntity<>(headers), Map.class);
+                    new HttpEntity<>(noCsrfHeaders), Map.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         }
+    }
+
+    /**
+     * Builds auth headers with session cookie but without CSRF token header.
+     * This simulates a valid session that is missing the CSRF token.
+     */
+    private HttpHeaders authHeadersWithSessionButNoCsrf(String email) {
+        // Login to get MF_ACCESS cookie
+        var loginBody = Map.of("email", email, "password", PASSWORD);
+        var loginHeaders = new HttpHeaders();
+        loginHeaders.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<Map> loginResponse = restTemplate.exchange(
+                "/auth/login", HttpMethod.POST,
+                new HttpEntity<>(loginBody, loginHeaders), Map.class);
+        String accessCookie = extractCookie(loginResponse, "MF_ACCESS=");
+
+        // Call /auth/me to get session cookie (but intentionally skip X-XSRF-TOKEN header)
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add("Cookie", accessCookie);
+        ResponseEntity<Void> csrfResponse = restTemplate.exchange(
+                "/auth/me", HttpMethod.GET, new HttpEntity<>(headers), Void.class);
+        var setCookies = csrfResponse.getHeaders().get("Set-Cookie");
+        if (setCookies != null) {
+            for (String cookie : setCookies) {
+                // Include all cookies EXCEPT skip adding the X-XSRF-TOKEN header
+                headers.add("Cookie", cookie.split(";")[0]);
+            }
+        }
+        // Intentionally do NOT add X-XSRF-TOKEN header
+        return headers;
     }
 }
