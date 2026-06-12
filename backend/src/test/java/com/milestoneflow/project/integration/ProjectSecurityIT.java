@@ -23,9 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Security integration tests for project APIs.
- *
- * <p>Verifies cross-user access is blocked, workspace isolation is enforced,
- * and unauthorized operations are rejected.
  */
 @DisplayName("Project Security IT")
 class ProjectSecurityIT extends AbstractIntegrationTest {
@@ -39,31 +36,34 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
     private static final String PASSWORD = "test-password-123";
 
     private String workspaceIdA;
-    private String cookieA;
-    private String cookieB;
     private HttpHeaders authHeadersA;
     private HttpHeaders authHeadersOnlyA;
+    private HttpHeaders authHeadersOnlyB;
 
     @BeforeEach
     void setUp() {
         cleanAll();
-
         createActiveUser(USER_A_EMAIL);
         createActiveUser(USER_B_EMAIL);
 
-        cookieA = loginAndGetCookie(USER_A_EMAIL);
-        cookieB = loginAndGetCookie(USER_B_EMAIL);
+        String cookieA = loginAndGetCookie(USER_A_EMAIL);
+        String cookieB = loginAndGetCookie(USER_B_EMAIL);
         authHeadersA = authHeadersWithCsrf(cookieA);
         authHeadersOnlyA = authHeadersOnly(cookieA);
+        authHeadersOnlyB = authHeadersOnly(cookieB);
 
         // User A creates workspace
         var wsBody = Map.of("name", "A's Workspace", "slug", "proj-sec-ws-a");
         ResponseEntity<Map> wsResponse = restTemplate.exchange(
                 "/workspaces", HttpMethod.POST,
                 new HttpEntity<>(wsBody, authHeadersA), Map.class);
+        assertThat(wsResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         @SuppressWarnings("unchecked")
         var wsData = (Map<String, Object>) wsResponse.getBody().get("data");
         workspaceIdA = (String) wsData.get("id");
+
+        // Refresh CSRF after workspace creation
+        authHeadersA = authHeadersWithCsrf(cookieA);
     }
 
     private void cleanAll() {
@@ -95,11 +95,13 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
         ResponseEntity<Map> response = restTemplate.exchange(
                 "/auth/login", HttpMethod.POST,
                 new HttpEntity<>(body, headers), Map.class);
+        return extractCookie(response, "MF_ACCESS=");
+    }
+
+    private String extractCookie(ResponseEntity<?> response, String prefix) {
         var setCookies = response.getHeaders().get("Set-Cookie");
-        return setCookies.stream()
-                .filter(c -> c.startsWith("MF_ACCESS="))
-                .findFirst()
-                .orElse(null);
+        if (setCookies == null) return null;
+        return setCookies.stream().filter(c -> c.startsWith(prefix)).findFirst().orElse(null);
     }
 
     private HttpHeaders authHeadersWithCsrf(String accessCookie) {
@@ -109,13 +111,10 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
 
         ResponseEntity<Void> csrfResponse = restTemplate.exchange(
                 "/auth/me", HttpMethod.GET, new HttpEntity<>(headers), Void.class);
-
         var setCookies = csrfResponse.getHeaders().get("Set-Cookie");
         if (setCookies != null) {
             String xsrfCookie = setCookies.stream()
-                    .filter(c -> c.startsWith("XSRF-TOKEN="))
-                    .findFirst()
-                    .orElse(null);
+                    .filter(c -> c.startsWith("XSRF-TOKEN=")).findFirst().orElse(null);
             if (xsrfCookie != null) {
                 String csrfToken = xsrfCookie.split("XSRF-TOKEN=")[1].split(";")[0];
                 headers.add("X-XSRF-TOKEN", csrfToken);
@@ -131,8 +130,6 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
         return headers;
     }
 
-    // ── Cross-user access ─────────────────────────────────────────────────
-
     @Nested
     @DisplayName("Cross-user access")
     class CrossUserAccess {
@@ -140,16 +137,13 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should block user B from listing user A's workspace projects")
         void shouldBlockCrossUserList() {
-            // User A creates a project
             var body = Map.of("name", "A's Project");
-            restTemplate.exchange(
-                    "/workspaces/" + workspaceIdA + "/projects", HttpMethod.POST,
+            restTemplate.exchange("/workspaces/" + workspaceIdA + "/projects", HttpMethod.POST,
                     new HttpEntity<>(body, authHeadersA), Map.class);
 
-            // User B tries to list A's workspace projects
             ResponseEntity<Map> response = restTemplate.exchange(
                     "/workspaces/" + workspaceIdA + "/projects", HttpMethod.GET,
-                    new HttpEntity<>(authHeadersOnly(cookieB)), Map.class);
+                    new HttpEntity<>(authHeadersOnlyB), Map.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
@@ -158,7 +152,7 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
         @DisplayName("should block user B from creating project in user A's workspace")
         void shouldBlockCrossUserCreate() {
             var body = Map.of("name", "Infiltrator");
-            HttpHeaders headersB = authHeadersWithCsrf(cookieB);
+            HttpHeaders headersB = authHeadersWithCsrf(loginAndGetCookie(USER_B_EMAIL));
 
             ResponseEntity<Map> response = restTemplate.exchange(
                     "/workspaces/" + workspaceIdA + "/projects", HttpMethod.POST,
@@ -170,7 +164,6 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should block user B from viewing user A's project")
         void shouldBlockCrossUserGet() {
-            // User A creates a project
             var body = Map.of("name", "Secret Project");
             ResponseEntity<Map> createResponse = restTemplate.exchange(
                     "/workspaces/" + workspaceIdA + "/projects", HttpMethod.POST,
@@ -179,10 +172,9 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
             var data = (Map<String, Object>) createResponse.getBody().get("data");
             String projectId = (String) data.get("id");
 
-            // User B tries to read it
             ResponseEntity<Map> response = restTemplate.exchange(
                     "/workspaces/" + workspaceIdA + "/projects/" + projectId, HttpMethod.GET,
-                    new HttpEntity<>(authHeadersOnly(cookieB)), Map.class);
+                    new HttpEntity<>(authHeadersOnlyB), Map.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
@@ -190,7 +182,6 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should block user B from updating user A's project")
         void shouldBlockCrossUserUpdate() {
-            // User A creates a project
             var body = Map.of("name", "Protected");
             ResponseEntity<Map> createResponse = restTemplate.exchange(
                     "/workspaces/" + workspaceIdA + "/projects", HttpMethod.POST,
@@ -199,9 +190,8 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
             var data = (Map<String, Object>) createResponse.getBody().get("data");
             String projectId = (String) data.get("id");
 
-            // User B tries to update it
             var updateBody = Map.of("name", "Hacked!");
-            HttpHeaders headersB = authHeadersWithCsrf(cookieB);
+            HttpHeaders headersB = authHeadersWithCsrf(loginAndGetCookie(USER_B_EMAIL));
 
             ResponseEntity<Map> response = restTemplate.exchange(
                     "/workspaces/" + workspaceIdA + "/projects/" + projectId, HttpMethod.PATCH,
@@ -211,8 +201,6 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
         }
     }
 
-    // ── Cross-workspace isolation ─────────────────────────────────────────
-
     @Nested
     @DisplayName("Cross-workspace isolation")
     class CrossWorkspaceIsolation {
@@ -220,7 +208,6 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should return 404 when accessing project with wrong workspace")
         void shouldReturn404WrongWorkspace() {
-            // User A creates a project
             var body = Map.of("name", "Isolated Project");
             ResponseEntity<Map> createResponse = restTemplate.exchange(
                     "/workspaces/" + workspaceIdA + "/projects", HttpMethod.POST,
@@ -229,7 +216,6 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
             var data = (Map<String, Object>) createResponse.getBody().get("data");
             String projectId = (String) data.get("id");
 
-            // Try to access with a random workspace ID
             String fakeWorkspaceId = UUID.randomUUID().toString();
             ResponseEntity<Map> response = restTemplate.exchange(
                     "/workspaces/" + fakeWorkspaceId + "/projects/" + projectId, HttpMethod.GET,
@@ -238,8 +224,6 @@ class ProjectSecurityIT extends AbstractIntegrationTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
     }
-
-    // ── Anonymous access ──────────────────────────────────────────────────
 
     @Nested
     @DisplayName("Anonymous access")

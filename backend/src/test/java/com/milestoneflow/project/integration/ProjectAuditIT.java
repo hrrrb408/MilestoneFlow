@@ -10,6 +10,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -57,22 +58,14 @@ class ProjectAuditIT extends AbstractIntegrationTest {
         ResponseEntity<Map> loginResponse = restTemplate.exchange(
                 "/auth/login", HttpMethod.POST,
                 new HttpEntity<>(body, headers), Map.class);
-        var setCookies = loginResponse.getHeaders().get("Set-Cookie");
-        String accessToken = setCookies.stream()
-                .filter(c -> c.startsWith("MF_ACCESS="))
-                .findFirst()
-                .orElse(null);
+        String accessToken = extractCookie(loginResponse, "MF_ACCESS=");
 
         // Get CSRF token
         var csrfHeaders = new HttpHeaders();
         csrfHeaders.add("Cookie", accessToken);
         ResponseEntity<Void> csrfResponse = restTemplate.exchange(
                 "/auth/me", HttpMethod.GET, new HttpEntity<>(csrfHeaders), Void.class);
-
-        var csrfSetCookies = csrfResponse.getHeaders().get("Set-Cookie");
-        String xsrfCookie = csrfSetCookies != null
-                ? csrfSetCookies.stream().filter(c -> c.startsWith("XSRF-TOKEN=")).findFirst().orElse(null)
-                : null;
+        String xsrfCookie = extractCookieFromResponse(csrfResponse, "XSRF-TOKEN=");
         String csrfToken = xsrfCookie != null ? xsrfCookie.split("XSRF-TOKEN=")[1].split(";")[0] : "";
 
         authHeaders = new HttpHeaders();
@@ -91,9 +84,16 @@ class ProjectAuditIT extends AbstractIntegrationTest {
         ResponseEntity<Map> wsResponse = restTemplate.exchange(
                 "/workspaces", HttpMethod.POST,
                 new HttpEntity<>(wsBody, authHeaders), Map.class);
+        assertThat(wsResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         @SuppressWarnings("unchecked")
         var wsData = (Map<String, Object>) wsResponse.getBody().get("data");
+        assertThat(wsData).isNotNull();
         workspaceId = (String) wsData.get("id");
+
+        // Refresh CSRF after workspace creation
+        authHeaders = buildAuthHeaders(accessToken);
+        authHeadersOnly = new HttpHeaders();
+        authHeadersOnly.add("Cookie", accessToken);
     }
 
     private void cleanAll() {
@@ -106,6 +106,33 @@ class ProjectAuditIT extends AbstractIntegrationTest {
         jdbc.update("DELETE FROM workspace WHERE created_by IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
         jdbc.update("DELETE FROM auth_session WHERE user_id IN (SELECT id FROM app_user WHERE email_normalized = ?)", norm);
         jdbc.update("DELETE FROM app_user WHERE email_normalized = ?", norm);
+    }
+
+    private String extractCookie(ResponseEntity<?> response, String prefix) {
+        var setCookies = response.getHeaders().get("Set-Cookie");
+        if (setCookies == null) return null;
+        return setCookies.stream().filter(c -> c.startsWith(prefix)).findFirst().orElse(null);
+    }
+
+    private String extractCookieFromResponse(ResponseEntity<?> response, String prefix) {
+        var setCookies = response.getHeaders().get("Set-Cookie");
+        if (setCookies == null) return null;
+        return setCookies.stream().filter(c -> c.startsWith(prefix)).findFirst().orElse(null);
+    }
+
+    private HttpHeaders buildAuthHeaders(String accessToken) {
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add("Cookie", accessToken);
+        ResponseEntity<Void> csrfResponse = restTemplate.exchange(
+                "/auth/me", HttpMethod.GET, new HttpEntity<>(headers), Void.class);
+        String xsrfCookie = extractCookieFromResponse(csrfResponse, "XSRF-TOKEN=");
+        if (xsrfCookie != null) {
+            String csrfToken = xsrfCookie.split("XSRF-TOKEN=")[1].split(";")[0];
+            headers.add("Cookie", xsrfCookie.split(";")[0]);
+            headers.add("X-XSRF-TOKEN", csrfToken);
+        }
+        return headers;
     }
 
     // ── PROJECT_CREATED ───────────────────────────────────────────────────
@@ -122,7 +149,6 @@ class ProjectAuditIT extends AbstractIntegrationTest {
                     "/workspaces/" + workspaceId + "/projects", HttpMethod.POST,
                     new HttpEntity<>(body, authHeaders), Map.class);
 
-            // Verify audit event
             Integer count = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM audit_event WHERE actor_id = ?::uuid AND action = 'PROJECT_CREATED'",
                     Integer.class, userId);
@@ -149,7 +175,6 @@ class ProjectAuditIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should write audit event when project is updated")
         void shouldWriteAuditEvent() {
-            // Create project
             var createBody = Map.of("name", "Before Update");
             ResponseEntity<Map> createResponse = restTemplate.exchange(
                     "/workspaces/" + workspaceId + "/projects", HttpMethod.POST,
@@ -158,13 +183,11 @@ class ProjectAuditIT extends AbstractIntegrationTest {
             var data = (Map<String, Object>) createResponse.getBody().get("data");
             String projectId = (String) data.get("id");
 
-            // Update project
             var updateBody = Map.of("name", "After Update");
             restTemplate.exchange(
                     "/workspaces/" + workspaceId + "/projects/" + projectId, HttpMethod.PATCH,
                     new HttpEntity<>(updateBody, authHeaders), Map.class);
 
-            // Verify audit event
             Integer count = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM audit_event WHERE actor_id = ?::uuid AND action = 'PROJECT_UPDATED'",
                     Integer.class, userId);
