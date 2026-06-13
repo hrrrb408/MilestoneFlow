@@ -51,6 +51,7 @@ class ArchitectureRulesTest {
      */
     private static final String[] BUSINESS_MODULES = {
             "identity", "workspace", "client", "project", "milestone", "task",
+            "progress",
             "quotation", "baseline", "delivery", "changeorder", "receivable",
             "publicaccess", "fileasset", "notification", "audit",
             "actioncenter", "pilotfeedback", "scheduler"
