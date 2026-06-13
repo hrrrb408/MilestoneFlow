@@ -54,6 +54,7 @@ class ArchitectureRulesTest {
             "progress",
             "quotation", "baseline", "delivery", "changeorder", "receivable",
             "publicaccess", "fileasset", "notification", "audit",
+            "activity",
             "actioncenter", "pilotfeedback", "scheduler"
     };
 
