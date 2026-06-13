@@ -380,3 +380,36 @@ Schemas: `ProjectProgressResponse`, `MilestoneProgressResponse`, `MilestoneProgr
 Or if B6-001 is sufficient:
 
 **MF-BE-B7-001:** ActivityLog auto-recording and timeline query foundation.
+
+---
+
+## 11. B6-002 Closure Follow-up
+
+`MF-BE-B6-002` has closed the B6 progress stage. The changes applied on top of
+this document are summarized in
+[`MF-BE-B6-002_PROGRESS_BOUNDARY_AND_CLOSURE.md`](MF-BE-B6-002_PROGRESS_BOUNDARY_AND_CLOSURE.md).
+
+What B6-002 added/changed relative to B6-001:
+
+- `ProgressRateCalculator` now defensively rejects negative inputs and
+  `completedTasks > totalTasks` (a completion rate above 100.00 is impossible).
+  The division/rounding logic is unchanged.
+- New integration tests: `ProgressBoundaryIT` (exact ratio boundaries),
+  `ProgressConsistencyIT` (status-inconsistency scenarios), and
+  `ProgressPerformanceIT` (200 tasks / 20 milestones scale correctness).
+- `ProgressRateCalculatorTest` extended with 1/6, 5/6, 0/3 and the defensive
+  throw cases.
+- `OpenApiProgressDocumentationIT` extended to assert the exact contracted
+  field set of every progress response schema and the absence of
+  internal/audit fields.
+
+Nothing in §1–§9 above (APIs, calculation rules, SQL, permissions) was
+functionally changed by B6-002 — the read model behavior described here remains
+authoritative. No database migration was added; V001–V010 are unmodified.
+
+B6 stage result:
+
+```
+Progress B6 backend read model completed.
+ActivityLog stage can start.
+```
