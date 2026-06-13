@@ -71,8 +71,8 @@ public class ActivityLogQueryRepositoryAdapter implements ActivityLogQueryReposi
                                                  String eventType, String targetType) {
         String sql = SELECT_COLUMNS + """
                 WHERE workspace_id = :workspaceId
-                  AND (:eventType IS NULL OR action = :eventType)
-                  AND (:targetType IS NULL OR target_type = :targetType)
+                  AND (CAST(:eventType AS varchar) IS NULL OR action = :eventType)
+                  AND (CAST(:targetType AS varchar) IS NULL OR target_type = :targetType)
                 """ + ORDER_LIMIT;
 
         Map<String, Object> params = new HashMap<>();
