@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for {@link ProgressRateCalculator}.
@@ -86,11 +87,74 @@ class ProgressRateCalculatorTest {
         }
 
         @Test
+        @DisplayName("1/6 completed → 16.67")
+        void oneSixthCompleted() {
+            assertThat(ProgressRateCalculator.calculate(1, 6))
+                    .isEqualByComparingTo(BigDecimal.valueOf(16.67));
+        }
+
+        @Test
+        @DisplayName("5/6 completed → 83.33")
+        void fiveSixthsCompleted() {
+            assertThat(ProgressRateCalculator.calculate(5, 6))
+                    .isEqualByComparingTo(BigDecimal.valueOf(83.33));
+        }
+
+        @Test
+        @DisplayName("0/3 completed → 0.00")
+        void zeroCompletedWithTasks() {
+            assertThat(ProgressRateCalculator.calculate(0, 3))
+                    .isEqualByComparingTo(BigDecimal.valueOf(0.00));
+        }
+
+        @Test
         @DisplayName("result always has 2 decimal places")
         void resultScale() {
             assertThat(ProgressRateCalculator.calculate(0, 0).scale()).isEqualTo(2);
             assertThat(ProgressRateCalculator.calculate(1, 1).scale()).isEqualTo(2);
             assertThat(ProgressRateCalculator.calculate(1, 3).scale()).isEqualTo(2);
+        }
+    }
+
+    @Nested
+    @DisplayName("boundary validation")
+    class BoundaryValidation {
+
+        @Test
+        @DisplayName("negative completedTasks throws IllegalArgumentException")
+        void negativeCompletedThrows() {
+            assertThatThrownBy(() -> ProgressRateCalculator.calculate(-1, 3))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("negative totalTasks throws IllegalArgumentException")
+        void negativeTotalThrows() {
+            assertThatThrownBy(() -> ProgressRateCalculator.calculate(0, -1))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("completedTasks greater than totalTasks throws IllegalArgumentException")
+        void completedExceedsTotalThrows() {
+            assertThatThrownBy(() -> ProgressRateCalculator.calculate(3, 2))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("completedTasks greater than zero totalTasks throws (never silently 0.00)")
+        void completedWithZeroTotalThrows() {
+            // Defends the invariant that completionRate can never exceed 100.00:
+            // a completed count without a matching total is inconsistent source data.
+            assertThatThrownBy(() -> ProgressRateCalculator.calculate(5, 0))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("0/0 is still valid and returns 0.00")
+        void zeroOverZeroIsValid() {
+            assertThat(ProgressRateCalculator.calculate(0, 0))
+                    .isEqualByComparingTo(BigDecimal.valueOf(0.00));
         }
     }
 }
