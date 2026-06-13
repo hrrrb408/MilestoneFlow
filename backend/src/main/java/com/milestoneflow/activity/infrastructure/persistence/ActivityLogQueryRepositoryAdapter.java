@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -74,14 +75,13 @@ public class ActivityLogQueryRepositoryAdapter implements ActivityLogQueryReposi
                   AND (:targetType IS NULL OR target_type = :targetType)
                 """ + ORDER_LIMIT;
 
-        return jdbc.query(sql,
-                Map.of(
-                        "workspaceId", workspaceId,
-                        "limit", limit,
-                        "eventType", eventType,
-                        "targetType", targetType
-                ),
-                this::mapRow);
+        Map<String, Object> params = new HashMap<>();
+        params.put("workspaceId", workspaceId);
+        params.put("limit", limit);
+        params.put("eventType", eventType);
+        params.put("targetType", targetType);
+
+        return jdbc.query(sql, params, this::mapRow);
     }
 
     // ── Project ──────────────────────────────────────────────────────────────
