@@ -161,5 +161,60 @@ class OpenApiProgressDocumentationIT {
             assertThat(props.has("milestoneStatus")).isTrue();
             assertThat(props.has("totalTasks")).isTrue();
         }
+
+        @Test
+        @DisplayName("ProjectProgressResponse exposes exactly the contracted field set")
+        void projectResponseFieldSetIsComplete() throws Exception {
+            JsonNode docs = getApiDocs();
+            JsonNode props = docs.at("/components/schemas/ProjectProgressResponse/properties");
+
+            assertThat(schemaFieldNames(props)).containsExactlyInAnyOrder(
+                    "workspaceId", "projectId",
+                    "totalTasks", "completedTasks", "openTasks", "completionRate",
+                    "totalMilestones", "completedMilestones", "openMilestones");
+        }
+
+        @Test
+        @DisplayName("MilestoneProgressResponse exposes exactly the contracted field set")
+        void milestoneResponseFieldSetIsComplete() throws Exception {
+            JsonNode docs = getApiDocs();
+            JsonNode props = docs.at("/components/schemas/MilestoneProgressResponse/properties");
+
+            assertThat(schemaFieldNames(props)).containsExactlyInAnyOrder(
+                    "workspaceId", "projectId", "milestoneId",
+                    "milestoneTitle", "milestoneStatus",
+                    "totalTasks", "completedTasks", "openTasks", "completionRate");
+        }
+
+        @Test
+        @DisplayName("MilestoneProgressListResponse exposes only the items field")
+        void listResponseFieldSetIsComplete() throws Exception {
+            JsonNode docs = getApiDocs();
+            JsonNode props = docs.at("/components/schemas/MilestoneProgressListResponse/properties");
+
+            assertThat(schemaFieldNames(props)).containsExactly("items");
+        }
+
+        @Test
+        @DisplayName("progress responses do not leak internal/audit fields")
+        void progressResponsesDoNotLeakInternalFields() throws Exception {
+            JsonNode docs = getApiDocs();
+            JsonNode projectProps = docs.at("/components/schemas/ProjectProgressResponse/properties");
+            JsonNode milestoneProps = docs.at("/components/schemas/MilestoneProgressResponse/properties");
+
+            for (String forbidden : new String[]{"createdBy", "updatedBy", "completedBy",
+                    "settings", "version", "createdAt", "updatedAt"}) {
+                assertThat(projectProps.has(forbidden))
+                        .as("ProjectProgressResponse must not expose %s", forbidden).isFalse();
+                assertThat(milestoneProps.has(forbidden))
+                        .as("MilestoneProgressResponse must not expose %s", forbidden).isFalse();
+            }
+        }
+
+        private java.util.Set<String> schemaFieldNames(JsonNode properties) {
+            java.util.Set<String> names = new java.util.TreeSet<>();
+            properties.fieldNames().forEachRemaining(names::add);
+            return names;
+        }
     }
 }
